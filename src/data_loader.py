@@ -1,9 +1,6 @@
-import torch
 from schnetpack import properties
-from schnetpack.transform import ASENeighborList
-from torch import Dataset
-
 from schnetpack.datasets import ISO17, QM9, MD17
+from schnetpack.transform import ASENeighborList
 
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
 
@@ -14,7 +11,7 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
             "./qm9.db",
             batch_size=5,
             num_train=n_train,
-            num_test=0,
+            num_test=n_train,
             num_val=n_val,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
@@ -31,7 +28,7 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
             molecule=molecule,
             batch_size=10,
             num_train=n_train,
-            num_test=0,
+            num_test=n_train,
             num_val=n_val,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
@@ -41,7 +38,7 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
             fold="reference_eq",
             batch_size=10,
             num_train=n_train,
-            num_test=0,
+            num_test=n_train,
             num_val=n_val,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
@@ -75,7 +72,6 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
         for p in data.dataset.available_properties:
             print("-", p)
     return get_generator(base_gen=train), get_generator(base_gen=val)
-
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""
