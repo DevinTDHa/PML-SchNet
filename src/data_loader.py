@@ -5,14 +5,28 @@ from schnetpack.transform import ASENeighborList
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
 
 
-def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=False):
+def data_to_dic(x):
+    return {
+        "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
+        "R": x[properties.position],  # atomic positions `R` is `_positions`
+        "N": x[properties.n_atoms],  # Number of atoms
+    }
+
+
+def get_generator(base_gen, dataset):
+    for x in base_gen:
+        yield data_to_dic(x), x[energy_label[dataset]].float()
+
+
+def load_data(dataset="QM9", n_train=100, n_test=100, batch_size=2,
+              molecule="aspirin", log=False):
     if dataset == "QM9":
         data = QM9(
             "./qm9.db",
-            batch_size=5,
+            batch_size=batch_size,
             num_train=n_train,
-            num_test=n_train,
-            num_val=n_val,
+            num_test=n_test,
+            num_val=0,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
     elif dataset == "MD17":
@@ -26,40 +40,29 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
             "./md17.db",
             # fold = 'reference', # !! new param
             molecule=molecule,
-            batch_size=10,
+            batch_size=batch_size,
             num_train=n_train,
-            num_test=n_train,
-            num_val=n_val,
+            num_test=n_test,
+            num_val=0,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
     elif dataset == "ISO17":
         data = ISO17(
             "./iso17.db",
             fold="reference_eq",
-            batch_size=10,
+            batch_size=batch_size,
             num_train=n_train,
-            num_test=n_train,
-            num_val=n_val,
+            num_test=n_test,
+            num_val=0,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
     else:
-        raise ValueError("Only QM9, MD17 and ISO17 are supported.")
-
-    def data_to_dic(x):
-        return {
-            "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
-            "R": x[properties.position],  # atomic positions `R` is `_positions`
-            "N": x[properties.n_atoms],  # Number of atoms
-        }
-
-    def get_generator(base_gen):
-        for x in base_gen:
-            yield data_to_dic(x), x[energy_label[dataset]].float()
+        raise ValueError("Only QM9, MD17 and ISO17 are supported but used", dataset)
 
     data.prepare_data()
     data.setup()
     # test = data.test_dataloader()
-    val = data.val_dataloader()
+    test = data.test_dataloader()
     train = data.train_dataloader()
 
     if log:
@@ -71,18 +74,18 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
 
         for p in data.dataset.available_properties:
             print("-", p)
-    return get_generator(base_gen=train), get_generator(base_gen=val)
+    return get_generator(train, dataset), get_generator(test, dataset)
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""
 #
-#     def __init__(self, dataset_iterator, n_train, n_val, molecule="aspirin", fold=None):
+#     def __init__(self, dataset_iterator, n_train, n_test, molecule="aspirin", fold=None):
 #         if dataset == "QM9":
 #             data = QM9(
 #                 "./qm9.db",
 #                 batch_size=5,
 #                 num_train=n_train,
-#                 num_val=n_val,
+#                 num_val=n_test,
 #                 transforms=[ASENeighborList(cutoff=5.0)],
 #             )
 #         elif dataset == "MD17":
@@ -98,7 +101,7 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
 #                 molecule=molecule,
 #                 batch_size=10,
 #                 num_train=n_train,
-#                 num_val=n_val,
+#                 num_val=n_test,
 #                 transforms=[ASENeighborList(cutoff=5.0)],
 #             )
 #         elif dataset == "ISO17":
@@ -107,7 +110,7 @@ def load_data(dataset="QM9", n_train=100, n_val=100, molecule="aspirin", log=Fal
 #                 fold="reference_eq",
 #                 batch_size=10,
 #                 num_train=n_train,
-#                 num_val=n_val,
+#                 num_val=n_test,
 #                 transforms=[ASENeighborList(cutoff=5.0)],
 #             )
 #
