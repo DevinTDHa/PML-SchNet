@@ -9,7 +9,7 @@ from ase.db import connect
 from schnetpack.datasets import ISO17
 
 
-def fix_iso_17_db(data_path="iso17.db"):
+def fix_iso_17_db(data_path="./iso17.db"):
     if "iso17_fixed" not in os.listdir():
         iso17data = ISO17(
             "./iso17.db",

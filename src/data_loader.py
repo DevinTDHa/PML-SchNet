@@ -5,19 +5,21 @@ from schnetpack.transform import ASENeighborList
 from src.data_utils import fix_iso_17_db
 
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
+force_label = {"QM9": None, "MD17": "forces", "ISO17": "atomic_forces"}
 
 
-def data_to_dic(x):
+def data_to_dic(x, dataset):
     return {
         "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
         "R": x[properties.position],  # atomic positions `R` is `_positions`
         "N": x[properties.n_atoms],  # Number of atoms
+        "F": x[force_label[dataset]],
     }
 
 
 def get_generator(base_gen, dataset):
     for x in base_gen:
-        yield data_to_dic(x), x[energy_label[dataset]].float()
+        yield data_to_dic(x, dataset), x[energy_label[dataset]].float()
 
 
 def load_data(
