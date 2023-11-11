@@ -2,6 +2,8 @@ from schnetpack import properties
 from schnetpack.datasets import ISO17, QM9, MD17
 from schnetpack.transform import ASENeighborList
 
+from src.data_utils import fix_iso_17_db
+
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
 
 
@@ -18,8 +20,9 @@ def get_generator(base_gen, dataset):
         yield data_to_dic(x), x[energy_label[dataset]].float()
 
 
-def load_data(dataset="QM9", n_train=100, n_test=100, batch_size=2,
-              molecule="aspirin", log=False):
+def load_data(
+    dataset="QM9", n_train=100, n_test=100, batch_size=2, molecule="aspirin", log=False
+):
     if dataset == "QM9":
         data = QM9(
             "./qm9.db",
@@ -47,6 +50,7 @@ def load_data(dataset="QM9", n_train=100, n_test=100, batch_size=2,
             transforms=[ASENeighborList(cutoff=5.0)],
         )
     elif dataset == "ISO17":
+        fix_iso_17_db()
         data = ISO17(
             "./iso17.db",
             fold="reference_eq",
@@ -75,6 +79,7 @@ def load_data(dataset="QM9", n_train=100, n_test=100, batch_size=2,
         for p in data.dataset.available_properties:
             print("-", p)
     return get_generator(train, dataset), get_generator(test, dataset)
+
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""
