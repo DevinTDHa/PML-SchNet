@@ -10,9 +10,9 @@ from schnetpack.datasets import ISO17
 
 
 def fix_iso_17_db(data_path="./iso17.db"):
-    if "iso17_fixed" not in os.listdir():
+    if "iso17_fixed" not in os.listdir(data_path):
         iso17data = ISO17(
-            "./iso17.db",
+            datapath=data_path,
             fold="reference_eq",
             batch_size=1,
             num_train=1,
@@ -51,4 +51,5 @@ def fix_iso_17_db(data_path="./iso17.db"):
             os.remove(dbpath)
             os.rename(tmp_dbpath, dbpath)
         shutil.rmtree(tmpdir)
-        os.system("touch iso17_fixed")
+        fixed_file = os.path.join(data_path, "iso17_fixed")
+        os.system(f"touch {fixed_file}")

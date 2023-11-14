@@ -1,3 +1,5 @@
+import os
+
 from schnetpack import properties
 from schnetpack.datasets import ISO17, QM9, MD17
 from schnetpack.transform import ASENeighborList
@@ -23,11 +25,11 @@ def get_generator(base_gen, dataset):
 
 
 def load_data(
-    dataset="QM9", n_train=100, n_test=100, batch_size=2, molecule="aspirin", log=False
+        dataset="QM9", n_train=100, n_test=100, batch_size=2, molecule="aspirin", log=False, cache_dir="./"
 ):
     if dataset == "QM9":
         data = QM9(
-            "./qm9.db",
+            os.path.join(cache_dir, "qm9.db"),
             batch_size=batch_size,
             num_train=n_train,
             num_test=n_test,
@@ -42,7 +44,7 @@ def load_data(
         #                       'Salicylic_acid','Toluene','Uracil']:
         # raise Exception('Please choose one of the following molecules : aspirin,azobenzene,benzene,ethanol,malonaldehyde,naphthalene,paracetamol,salicylic_acid,toluene,uracil')
         data = MD17(
-            "./md17.db",
+            os.path.join(cache_dir, "md17.db"),
             # fold = 'reference', # !! new param
             molecule=molecule,
             batch_size=batch_size,
@@ -54,7 +56,7 @@ def load_data(
     elif dataset == "ISO17":
         fix_iso_17_db()
         data = ISO17(
-            "./iso17.db",
+            os.path.join(cache_dir, "iso17.db"),
             fold="reference_eq",
             batch_size=batch_size,
             num_train=n_train,
@@ -63,7 +65,7 @@ def load_data(
             transforms=[ASENeighborList(cutoff=5.0)],
         )
     else:
-        raise ValueError("Only QM9, MD17 and ISO17 are supported but used", dataset)
+        raise ValueError("Only QM9, MD17 and ISO17 are supported but used " + dataset)
 
     data.prepare_data()
     data.setup()
@@ -81,7 +83,6 @@ def load_data(
         for p in data.dataset.available_properties:
             print("-", p)
     return get_generator(train, dataset), get_generator(test, dataset)
-
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""
