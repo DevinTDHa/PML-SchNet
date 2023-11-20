@@ -1,5 +1,8 @@
 import torch
 import argparse
+import sys
+import os
+sys.path.append(os.getcwd())
 from src.baseline import train, BaselineModel
 
 # Initialize parser
@@ -17,3 +20,7 @@ print("CUDA AVAILABLE:", torch.cuda.is_available())
 
 # Call the train function with CLI arguments
 train(BaselineModel(), dataset=args.dataset, epochs=args.epochs, lr=args.learning_rate)
+
+
+
+# apptainer run --nv pml.sif python scripts/train.py
