@@ -119,7 +119,6 @@ class BaselineModelMD17AspirinEnergyForce(nn.Module):
     def forward(self, R):
         # n_atoms = input["N"]
         # Z = input["Z"]
-
         y = self.model(R.float())
         return y
 
@@ -160,14 +159,14 @@ def train_md17(model, dataset_iterator, lr=0.01):
     return losses
 
 
-def validate_md17(model, dataset, criterion=nn.MSELoss()):
+def validate_md17(model, dataset_iterator, criterion=nn.MSELoss()):
     # Validation step
     model.eval()
     # with torch.no_grad():
     E_mu, E_std = (torch.tensor(-406737.276528638), torch.tensor(5.94684041516964))
 
     val_loss = []
-    for data, y_batch in tqdm(dataset, unit="batch"):
+    for data, y_batch in tqdm(dataset_iterator, unit="batch"):
         batch_size = len(data["N"])
         y_batch = (y_batch.view(-1, 1) - E_mu) / E_std
         X_batch = data["R"].view(batch_size, -1)
@@ -186,28 +185,28 @@ def validate_md17(model, dataset, criterion=nn.MSELoss()):
 
 
 def train_md17_energy_force(model, dataset_iterator):
-    optimizer = torch.optim.Adam(model.parameters(), lr=100)  # TODO: LR decay
-    label = "energy"
+    model.train()
+    model.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=100)
 
     # Training loop
     losses = []
-    with tqdm(total=len(dataset.train_dataloader()), unit="batch") as pbar:
-        for i, data in enumerate(dataset.train_dataloader()):
-            batch_size = len(data["_idx"])
-            # y_batch = (data[label].view(-1, 1) - E_mu) / E_std
-            y_batch = data[label].view(-1, 1)
-            X_batch = data["_positions"].view(batch_size, -1)
-            X_batch.requires_grad_()
-            F_batch = data["forces"].view(batch_size, -1)
-            X_batch, y_batch, F_batch = (
+    with tqdm(unit="batch") as pbar:
+        for data, E in dataset_iterator:
+            batch_size = len(data["N"])
+            E = E.view(-1, 1)
+            X_batch = data["R"].view(batch_size, -1)
+            F_batch = data["F"].view(batch_size, -1)
+            X_batch, E, F_batch = (
                 X_batch.to(device),
-                y_batch.to(device),
+                E.to(device),
                 F_batch.to(device),
             )
+            X_batch.requires_grad = True
 
             # Forward pass
             E_pred = model(X_batch)
-            E = y_batch.float()
             loss = energy_force_loss(
                 E_pred, X_batch, E, F_batch
             )  # Ensure y_batch is the correct shape
@@ -222,18 +221,17 @@ def train_md17_energy_force(model, dataset_iterator):
             pbar.update()
 
 
-def validate_md17_energy_force(model, dataset):
+def validate_md17_energy_force(model, dataset_iterator):
     # Validation step
     model.eval()
     # with torch.no_grad():
     val_loss = []
-    for data in tqdm(dataset.val_dataloader(), ncols=80):
-        batch_size = len(data["_idx"])
-        # y_batch = (data[label].view(-1, 1) - E_mu) / E_std
-        y_batch = data[label].view(-1, 1)
-        X_batch = data["_positions"].view(batch_size, -1)
+    for data, y_batch in tqdm(dataset_iterator):
+        batch_size = len(data["N"])
+        y_batch = y_batch.view(-1, 1)
+        X_batch = data["R"].view(batch_size, -1)
         X_batch.requires_grad_()
-        F_batch = data["forces"].view(batch_size, -1)
+        F_batch = data["F"].view(batch_size, -1)
         X_batch, y_batch, F_batch = (
             X_batch.to(device),
             y_batch.to(device),

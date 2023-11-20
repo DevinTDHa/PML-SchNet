@@ -31,8 +31,11 @@ def load_data(
     batch_size=32,
     molecule="aspirin",
     log=False,
-    cache_dir="./",
+    cache_dir="/home/space/datasets/SchNet",
 ):
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+
     if dataset == "QM9":
         data = QM9(
             os.path.join(cache_dir, "qm9.db"),

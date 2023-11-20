@@ -1,7 +1,7 @@
 import torch
 
 
-def energy_force_loss(E_pred, E, R, F):
+def energy_force_loss(E_pred, R, E, F):
     rho = 0.01
     dist_E = rho * (E - E_pred).abs() ** 2
 
