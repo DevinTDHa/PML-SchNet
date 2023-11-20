@@ -3,8 +3,11 @@ import plotly.express as px
 import torch
 from schnetpack import properties
 from torch import nn
+from tqdm import tqdm
 
 from src.data_loader import load_data
+
+label = "energy_U0"
 
 
 class BaselineModel(nn.Module):
@@ -12,7 +15,7 @@ class BaselineModel(nn.Module):
         super().__init__()
         self.model = nn.Sequential(
             nn.Embedding(max_embeddings, embedding_dim),
-            nn.Linear(embedding_dim, 1, bias=False)
+            nn.Linear(embedding_dim, 1, bias=False),
         )
 
     def forward(self, input):
@@ -36,10 +39,9 @@ def train(model, dataset, epochs=50, lr=0.01):
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
-    label = 'energy_U0'
     losses = []
     model.train()
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         train_gen, test_gen = load_data(dataset, 100, 100)
         loss = None
         for X_batch, y_batch in train_gen:
@@ -50,30 +52,34 @@ def train(model, dataset, epochs=50, lr=0.01):
             loss.backward()  # Compute gradients
             optimizer.step()  # Update weights
         print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-        losses.append({'epoch': epoch, 'loss': loss.item()})
+        losses.append({"epoch": epoch, "loss": loss.item()})
     plot_loss(losses)
+    return model
 
 
-def validate():
-    raise NotImplemented("todo")
-    # # Validation step
-    # model.eval()
-    # with torch.no_grad():
-    #     val_loss = 0
-    #     for data in dataset.val_dataloader():
-    #         X_batch = data_to_dic(data)
-    #         y_batch = data[label].float()
-    #         val_loss += criterion(model(X_batch), y_batch).item()
+def validate(model, dataset):
+    # Validation step
+    criterion = nn.MSELoss()
+
+    model.eval()
+    with torch.no_grad():
+        val_loss = []
+        for data in dataset.val_dataloader():
+            X_batch = data_to_dic(data)
+            y_batch = data[label].float()
+            val_loss.append(criterion(model(X_batch), y_batch).item())
+    mean_loss = torch.Tensor(val_loss).mean()
+    return mean_loss
 
 
 def plot_loss(losses):
-    fig = px.line(pd.DataFrame(losses), x="epoch", y="loss", title='Loss over epoch')
+    fig = px.line(pd.DataFrame(losses), x="epoch", y="loss", title="Loss over epoch")
     fig.show()
 
 
 def data_to_dic(x):
     return {
-        'Z': x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
-        'R': x[properties.position],  # atomic positions `R` is `_positions`
-        'N': x[properties.n_atoms]
+        "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
+        "R": x[properties.position],  # atomic positions `R` is `_positions`
+        "N": x[properties.n_atoms],
     }
