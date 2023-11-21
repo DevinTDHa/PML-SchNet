@@ -33,9 +33,9 @@ if args.train_mode:
             try:
                 print("Training...")
                 train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train)
-                results[trainable]['success'] = True
+                results[str(trainable)]['success'] = True
             except Exception as e:
-                results[trainable]['success'] = False
+                results[str(trainable)]['success'] = False
                 print(f"Error {e} while training {trainable}")
                 continue
         print("Done!")
