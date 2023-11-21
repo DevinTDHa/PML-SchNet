@@ -49,7 +49,8 @@ def fix_iso_17_db(data_path="./iso17.db"):
                         tmp_conn.write(atmsrw.toatoms(), data=data)
 
             os.remove(dbpath)
-            os.rename(tmp_dbpath, dbpath)
+            shutil.copy(tmp_dbpath, dbpath)
+
         shutil.rmtree(tmpdir)
         fixed_file = os.path.join(data_path, "iso17_fixed")
         os.system(f"touch {fixed_file}")

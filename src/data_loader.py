@@ -11,12 +11,19 @@ force_label = {"QM9": None, "MD17": "forces", "ISO17": "atomic_forces"}
 
 
 def data_to_dic(x, dataset):
-    return {
-        "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
-        "R": x[properties.position],  # atomic positions `R` is `_positions`
-        "N": x[properties.n_atoms],  # Number of atoms
-        "F": x[force_label[dataset]],
-    }
+    if dataset == 'QM9':
+        return {
+            "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
+            "R": x[properties.position],  # atomic positions `R` is `_positions`
+            "N": x[properties.n_atoms],  # Number of atoms
+        }
+    else:
+        return {
+            "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
+            "R": x[properties.position],  # atomic positions `R` is `_positions`
+            "N": x[properties.n_atoms],  # Number of atoms
+            "F": x[force_label[dataset]],
+        }
 
 
 def get_generator(base_gen, dataset):
@@ -31,7 +38,7 @@ def load_data(
     batch_size=32,
     molecule="aspirin",
     log=False,
-    cache_dir="/home/space/datasets/SchNet",
+    cache_dir="./",
 ):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)

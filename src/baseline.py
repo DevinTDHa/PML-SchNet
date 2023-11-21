@@ -13,8 +13,7 @@ label = "energy_U0"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-class BaselineModelQM9(nn.Module):
+class BaselineModel(nn.Module):
     def __init__(self, max_embeddings=100, embedding_dim=8):
         super().__init__()
         self.model = nn.Sequential(
@@ -38,7 +37,8 @@ class BaselineModelQM9(nn.Module):
         return batch_means
 
 
-def train_qm9(model, dataset, epochs=5, lr=0.01):
+def train(model, dataset, epochs=50, lr=0.01):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
