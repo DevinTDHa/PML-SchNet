@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+from pprint import pprint
 
 import torch
 
@@ -25,14 +26,21 @@ if args.train_mode:
     if args.train_mode not in train_modes.keys():
         raise ValueError(f"train_mode must be one of {train_modes.keys()}")
     else:
+        results = {}
         for trainable in train_modes[args.train_mode]:
+            results[trainable] = {}
             print(f"Training {trainable}")
             try:
                 print("Training...")
                 train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train)
+                results[trainable]['success'] = True
             except Exception as e:
+                results[trainable]['success'] = False
                 print(f"Error {e} while training {trainable}")
                 continue
+        print("Done!")
+        pprint(results)
+
 else:
     trainable = Trainable(
         dataset=args.dataset,
