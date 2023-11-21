@@ -28,7 +28,7 @@ if args.train_mode:
     else:
         results = {}
         for trainable in train_modes[args.train_mode]:
-            results[trainable] = {}
+            results[str(trainable)] = {}
             print(f"Training {trainable}")
             try:
                 print("Training...")
