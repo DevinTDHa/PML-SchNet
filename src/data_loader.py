@@ -5,6 +5,8 @@ from schnetpack.datasets import ISO17, QM9, MD17
 from schnetpack.transform import ASENeighborList
 
 from src.data_utils import fix_iso_17_db
+from src.settings import valid_molecules
+from src import settings
 
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
 force_label = {"QM9": None, "MD17": "forces", "ISO17": "atomic_forces"}
@@ -32,13 +34,13 @@ def get_generator(base_gen, dataset):
 
 
 def load_data(
-    dataset="QM9",
-    n_train=100,
-    n_test=100,
-    batch_size=32,
-    molecule="aspirin",
-    log=False,
-    cache_dir="./",
+        dataset="QM9",
+        n_train=100,
+        n_test=100,
+        batch_size=32,
+        molecule="aspirin",
+        log=False,
+        cache_dir=settings.cache_dir,
 ):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
@@ -54,18 +56,6 @@ def load_data(
             split_file=None,
         )
     elif dataset == "MD17":
-        valid_molecules = [
-            "aspirin",
-            "azobenzene",
-            "benzene",
-            "ethanol",
-            "malonaldehyde",
-            "naphthalene",
-            "paracetamol",
-            "salicylic_acid",
-            "toluene",
-            "uracil",
-        ]
         if molecule is None:
             raise Exception("Please specify a molecule")
         elif molecule not in valid_molecules:
@@ -114,7 +104,6 @@ def load_data(
         for p in data.dataset.available_properties:
             print("-", p)
     return get_generator(train, dataset), get_generator(test, dataset)
-
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""

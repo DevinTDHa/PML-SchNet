@@ -1,40 +1,25 @@
-from src.baseline import *
-from src.data_loader import load_data
-
 import pytest
 
-@pytest.mark.parametrize("dataset", ["QM9", "MD17", "ISO17"])
-def test_train(dataset):
-    train(BaselineModel(), dataset, 5)
+from src.baseline import *
+from src.settings import Trainable, md17_trainable_one_molecule, all_trainable_one_molecule, qm9_trainable
 
 
-def test_train_md17():
-    train_iter, test_iter = load_data(
-        "MD17",
-        n_train=1000,
-        cache_dir="/home/ducha/Uni-Master/Courses/PML/data",
-        log=True,
-    )
+# all_trainable
+def test_id(test: Trainable) -> str:
+    return f"{test.dataset}_{test.task}_{test.molecule}"
 
-    model = BaselineModelMD17AspirinEnergy()
+
+# @pytest.mark.parametrize("trainable", md17_trainable_one_molecule, ids=test_id)
+# @pytest.mark.parametrize("trainable", qm9_trainable, ids=test_id)
+@pytest.mark.parametrize("trainable", all_trainable_one_molecule, ids=test_id)
+def test_train(trainable: Trainable):
     print("Training...")
-    train_md17(model, train_iter)
-    print("Validation...")
-    val_loss = validate_md17(model, test_iter)
-    print(val_loss)
-
-
-def test_train_md17_energy_force():
-    train_iter, test_iter = load_data(
-        "MD17",
-        n_train=1000,
-        cache_dir="/home/ducha/Uni-Master/Courses/PML/data",
-        log=True,
-    )
-
-    model = BaselineModelMD17AspirinEnergyForce()
-    print("Training...")
-    train_md17_energy_force(model, train_iter)
-    print("Validation...")
-    val_loss = validate_md17_energy_force(model, test_iter)
-    print(val_loss)
+    n_train = 100
+    model, test_losses = train(model='baseline', dataset=trainable.dataset, task=trainable.task,
+                               molecule=trainable.molecule,
+                               epochs=2, n_train=n_train)
+    if trainable.dataset == Dataset.md17:
+        #     TODO validation for other models
+        print("Validation...")
+        val_loss = validate(model, trainable.dataset, trainable.task, n_train=n_train, molecule=trainable.molecule)
+        print(val_loss)
