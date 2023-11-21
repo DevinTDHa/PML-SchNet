@@ -82,7 +82,9 @@ def train_baseline(model, n_train, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            loss = criterion(model(X_batch.to(device)), y_batch.to(device))
+            X_batch["N"] = X_batch["N"].to(device)
+            X_batch["Z"] = X_batch["Z"].to(device)
+            loss = criterion(model(X_batch), y_batch.to(device))
             # Backward pass and optimization
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
@@ -117,6 +119,7 @@ def train_and_validate(trainable: Trainable, model='baseline', n_train=100, lr=0
         print(val_loss)
     else:
         print("Validation not implemented for this dataset")
+
 
 def validate_qm9(model, dataset, n_train):
     # Validation step
