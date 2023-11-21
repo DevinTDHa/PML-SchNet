@@ -25,33 +25,56 @@ def get_generator(base_gen, dataset):
 
 
 def load_data(
-        dataset="QM9", n_train=100, n_test=100, batch_size=2, molecule="aspirin", log=False, cache_dir="./"
+    dataset="QM9",
+    n_train=100,
+    n_test=100,
+    batch_size=32,
+    molecule="aspirin",
+    log=False,
+    cache_dir="/home/space/datasets/SchNet",
 ):
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+
     if dataset == "QM9":
         data = QM9(
             os.path.join(cache_dir, "qm9.db"),
             batch_size=batch_size,
             num_train=n_train,
-            num_test=n_test,
-            num_val=0,
+            num_test=0,
+            num_val=n_test,
             transforms=[ASENeighborList(cutoff=5.0)],
+            split_file=None,
         )
     elif dataset == "MD17":
+        valid_molecules = [
+            "aspirin",
+            "azobenzene",
+            "benzene",
+            "ethanol",
+            "malonaldehyde",
+            "naphthalene",
+            "paracetamol",
+            "salicylic_acid",
+            "toluene",
+            "uracil",
+        ]
         if molecule is None:
             raise Exception("Please specify a molecule")
-        # elif molecule not in ['Aspirin','Azobenzene','Benzene','Ethanol',
-        #                       'Malonaldehyde','Naphthalene','Paracetamol',
-        #                       'Salicylic_acid','Toluene','Uracil']:
-        # raise Exception('Please choose one of the following molecules : aspirin,azobenzene,benzene,ethanol,malonaldehyde,naphthalene,paracetamol,salicylic_acid,toluene,uracil')
+        elif molecule not in valid_molecules:
+            raise Exception(
+                f"Please choose one of the following molecules : {valid_molecules}"
+            )
         data = MD17(
             os.path.join(cache_dir, "md17.db"),
             # fold = 'reference', # !! new param
             molecule=molecule,
             batch_size=batch_size,
             num_train=n_train,
-            num_test=n_test,
-            num_val=0,
+            num_test=0,
+            num_val=n_test,
             transforms=[ASENeighborList(cutoff=5.0)],
+            split_file=None,
         )
     elif dataset == "ISO17":
         fix_iso_17_db()
@@ -60,17 +83,18 @@ def load_data(
             fold="reference_eq",
             batch_size=batch_size,
             num_train=n_train,
-            num_test=n_test,
-            num_val=0,
+            num_test=0,
+            num_val=n_test,
             transforms=[ASENeighborList(cutoff=5.0)],
+            split_file=None,
         )
     else:
         raise ValueError("Only QM9, MD17 and ISO17 are supported but used " + dataset)
 
     data.prepare_data()
     data.setup()
-    # test = data.test_dataloader()
-    test = data.test_dataloader()
+
+    test = data.val_dataloader()
     train = data.train_dataloader()
 
     if log:
@@ -83,6 +107,7 @@ def load_data(
         for p in data.dataset.available_properties:
             print("-", p)
     return get_generator(train, dataset), get_generator(test, dataset)
+
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""
