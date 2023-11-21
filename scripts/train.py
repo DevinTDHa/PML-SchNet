@@ -4,9 +4,9 @@ import sys
 
 import torch
 
-from src.settings import train_modes
 
 sys.path.append(os.getcwd())
+from src.settings import train_modes
 from src.baseline import train
 
 parser = argparse.ArgumentParser(description="Train a model")
@@ -40,4 +40,14 @@ else:
     train(model='baseline', dataset=args.dataset, task=args.task,
           molecule=args.molecule,
           epochs=args.epochs, n_train=args.n_train)
+
+"""
+How to use :
+1. SSH into Cluster
+2. cd ~/PML-SchNet
+3. srun --partition=gpu-test --gpus=1 --pty bash   # Connect to GPU shell 
+4. apptainer run --nv pml.sif python scripts/train.py -M md17_one_molecule
+
+"""
+# apptainer run --nv pml.sif python scripts/train.py
 
