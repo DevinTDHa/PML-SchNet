@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from src.data_loader import load_data
 from src.loss import energy_force_loss
-from src.settings import Dataset, Model, Task
+from src.settings import Dataset, Model, Task, Trainable
 
 label = "energy_U0"
 
@@ -82,7 +82,7 @@ def train_baseline(model, n_train, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            loss = criterion(model(X_batch), y_batch)
+            loss = criterion(model(X_batch.to(device)), y_batch.to(device))
             # Backward pass and optimization
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
@@ -95,7 +95,7 @@ def train_baseline(model, n_train, lr, epochs, dataset):
 
 def validate(model, dataset, task, molecule, n_train, ):
     if dataset == "QM9":
-        return validate_qm9(model, dataset,n_train)
+        return validate_qm9(model, dataset, n_train)
     elif dataset == "MD17" and task == Task.energy:
         return validate_md17(model, molecule, n_train)
     elif dataset == "MD17" and task == Task.force:
@@ -104,6 +104,19 @@ def validate(model, dataset, task, molecule, n_train, ):
         raise NotImplementedError("ISO17 validation not implemented yet")
         # return validate_iso17(model, dataset)
 
+
+def train_and_validate(trainable: Trainable, model='baseline', n_train=100, lr=0.2, epochs=2):
+    print("Training...")
+    model, test_losses = train(model=model, dataset=trainable.dataset, task=trainable.task,
+                               molecule=trainable.molecule,
+                               epochs=epochs, n_train=n_train, lr=lr)
+    if trainable.dataset == Dataset.md17:
+        #     TODO validation for other models
+        print("Validation...")
+        val_loss = validate(model, trainable.dataset, trainable.task, n_train=n_train, molecule=trainable.molecule)
+        print(val_loss)
+    else:
+        print("Validation not implemented for this dataset")
 
 def validate_qm9(model, dataset, n_train):
     # Validation step

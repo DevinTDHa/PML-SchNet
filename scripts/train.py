@@ -4,10 +4,9 @@ import sys
 
 import torch
 
-
 sys.path.append(os.getcwd())
-from src.settings import train_modes
-from src.baseline import train
+from src.settings import train_modes, Trainable
+from src.baseline import train_and_validate
 
 parser = argparse.ArgumentParser(description="Train a model")
 parser.add_argument("-d", "--dataset", type=str, default="QM9", help="Dataset to use (QM9, MD17, ISO17)")
@@ -29,25 +28,15 @@ if args.train_mode:
         for trainable in train_modes[args.train_mode]:
             print(f"Training {trainable}")
             try:
-                train(model='baseline', dataset=trainable.dataset, task=trainable.task,
-                      molecule=trainable.molecule,
-                      epochs=args.epochs, n_train=args.n_train)
-
+                print("Training...")
+                train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train)
             except Exception as e:
                 print(f"Error {e} while training {trainable}")
                 continue
 else:
-    train(model='baseline', dataset=args.dataset, task=args.task,
-          molecule=args.molecule,
-          epochs=args.epochs, n_train=args.n_train)
-
-"""
-How to use :
-1. SSH into Cluster
-2. cd ~/PML-SchNet
-3. srun --partition=gpu-test --gpus=1 --pty bash   # Connect to GPU shell 
-4. apptainer run --nv pml.sif python scripts/train.py -M md17_one_molecule
-
-"""
-# apptainer run --nv pml.sif python scripts/train.py
-
+    trainable = Trainable(
+        dataset=args.dataset,
+        task=args.task,
+        molecule=args.molecule
+    )
+    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train)
