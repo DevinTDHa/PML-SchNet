@@ -28,11 +28,16 @@ if args.train_mode:
     else:
         for trainable in train_modes[args.train_mode]:
             print(f"Training {trainable}")
-            train(model='baseline', dataset=trainable.dataset, task=trainable.task,
-                  molecule=trainable.molecule,
-                  epochs=args.epochs, n_train=args.n_train)
+            try:
+                train(model='baseline', dataset=trainable.dataset, task=trainable.task,
+                      molecule=trainable.molecule,
+                      epochs=args.epochs, n_train=args.n_train)
 
+            except Exception as e:
+                print(f"Error {e} while training {trainable}")
+                continue
 else:
     train(model='baseline', dataset=args.dataset, task=args.task,
           molecule=args.molecule,
           epochs=args.epochs, n_train=args.n_train)
+
