@@ -57,4 +57,4 @@ train_modes = {
     'all_one_molecule': all_trainable_one_molecule,
 }
 
-cache_dir = './'
+cache_dir = '/home/space/datasets/schnet/'
