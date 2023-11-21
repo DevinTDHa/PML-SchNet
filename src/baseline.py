@@ -40,15 +40,17 @@ class BaselineModel(nn.Module):
         return batch_means
 
 
-def get_model(model, dataset, task):
+def get_model(model, dataset, task, molecule='aspirin'):
     if model == Model.baseline:
         if dataset in [Dataset.qm9, Dataset.iso17]:
             return BaselineModel()
         elif dataset == Dataset.md17:
+            if molecule is None:
+                raise ValueError("Please specify a molecule for md17")
             if task == "energy":
-                return BaselineModelMD17AspirinEnergy()
+                return BaselineModelMD17AspirinEnergy(molecule)
             elif task == "force":
-                return BaselineModelMD17AspirinEnergyForce()
+                return BaselineModelMD17AspirinEnergyForce(molecule)
             else:
                 raise ValueError("Invalid Task or Dataset, could not load model")
     elif model == Model.schnet:
@@ -61,7 +63,7 @@ def train(model, dataset, task, molecule=None, epochs=50, lr=0.01, n_train=100):
     global device
     if molecule is not None and dataset != 'MD17':
         raise ValueError("Molecule can only be specified for MD17 dataset")
-    model_obj = get_model(model, dataset, task)
+    model_obj = get_model(model, dataset, task, molecule)
     model_obj = model_obj.to(device)
     if model == Model.baseline and dataset != Dataset.md17:
         return model_obj, train_baseline(model_obj, n_train, lr, epochs, dataset)
@@ -191,7 +193,6 @@ class BaselineModelMD17AspirinEnergyForce(nn.Module):
 
 
 def train_md17(model, n_train, molecule, lr=0.01):
-
     model.to(device)
     model.train()
 
@@ -265,7 +266,6 @@ def validate_md17(model, molecule, n_train, criterion=nn.MSELoss()):
 
 
 def train_md17_energy_force(model, n_train, molecule, lr):
-
     model.train()
     model.to(device)
 
