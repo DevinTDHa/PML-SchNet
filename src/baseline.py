@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from src.data_loader import load_data
 from src.loss import energy_force_loss
-from src.settings import Dataset, Model, Task, Trainable
+from src.settings import Dataset, Model, Task, Trainable, valid_molecules
 
 label = "energy_U0"
 
@@ -153,7 +153,8 @@ def data_to_dic(x):
 
 
 class BaselineModelMD17AspirinEnergy(nn.Module):
-    def __init__(self, embedding_dim=63):
+    def __init__(self, molecule='aspirin'):
+        embedding_dim = valid_molecules[molecule] * 3
         super().__init__()
         self.model = nn.Sequential(nn.Linear(embedding_dim, 1, bias=False))
 
@@ -171,7 +172,9 @@ class BaselineModelMD17AspirinEnergyForce(nn.Module):
             nn.ReLU(),
         ]
 
-    def __init__(self, embedding_dim=63):
+    def __init__(self, molecule='aspirin'):
+        embedding_dim = valid_molecules[molecule] * 3
+
         super().__init__()
         self.model = nn.Sequential(
             *self.LinearBatchReLu(embedding_dim, 256),
@@ -194,6 +197,7 @@ def train_md17(model, n_train, molecule, lr=0.01):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
+    label = "energy"
 
     # Specific for Aspirin
     E_mu, E_std = (torch.tensor(-406737.276528638), torch.tensor(5.94684041516964))

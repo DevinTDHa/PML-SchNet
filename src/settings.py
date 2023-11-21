@@ -23,19 +23,19 @@ class Trainable:
     task: str
     molecule: str = None
 
+valid_molecules = {
+    "aspirin": 21,
+    "azobenzene": 12,
+    "benzene": 6,
+    "ethanol": 9,
+    "malonaldehyde": 9,
+    "naphthalene": 10,
+    "paracetamol": 22,
+    "salicylic_acid": 14,
+    "toluene": 7,
+    "uracil": 12,
+}
 
-valid_molecules = [
-    "aspirin",
-    "azobenzene",
-    "benzene",
-    "ethanol",
-    "malonaldehyde",
-    "naphthalene",
-    "paracetamol",
-    "salicylic_acid",
-    "toluene",
-    "uracil",
-]
 
 md17_trainable_all = [Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules] + \
                      [Trainable(Dataset.md17, Task.force, m) for m in valid_molecules]
