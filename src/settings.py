@@ -25,14 +25,14 @@ class Trainable:
 
 valid_molecules = {
     "aspirin": 21,
-    "azobenzene": 12,
-    "benzene": 6,
+    "azobenzene": 24,
+    "benzene": 12,
     "ethanol": 9,
     "malonaldehyde": 9,
-    "naphthalene": 10,
-    "paracetamol": 22,
-    "salicylic_acid": 14,
-    "toluene": 7,
+    "naphthalene": 18,
+    "paracetamol": 19,
+    "salicylic_acid": 16,
+    "toluene": 15,
     "uracil": 12,
 }
 
