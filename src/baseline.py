@@ -188,12 +188,7 @@ class BaselineModelMD17AspirinEnergyForce(nn.Module):
 
 
 def train_md17(model, n_train, molecule, lr=0.01):
-    dataset_iterator, _ = load_data(
-        Dataset.md17,
-        n_train=n_train,
-        molecule=molecule,
-        log=True,
-    )
+
     model.to(device)
     model.train()
 
@@ -206,6 +201,12 @@ def train_md17(model, n_train, molecule, lr=0.01):
     losses = []
     # with tqdm(total=len(dataset_iterator), unit="batch") as pbar:
     with tqdm(unit="batch") as pbar:
+        dataset_iterator, _ = load_data(
+            Dataset.md17,
+            n_train=n_train,
+            molecule=molecule,
+            log=True,
+        )
         for data, y_batch in dataset_iterator:
             batch_size = len(data["N"])
             y_batch = (y_batch.view(-1, 1) - E_mu) / E_std
@@ -260,12 +261,7 @@ def validate_md17(model, molecule, n_train, criterion=nn.MSELoss()):
 
 
 def train_md17_energy_force(model, n_train, molecule, lr):
-    dataset_iterator, _ = load_data(
-        Dataset.md17,
-        n_train=n_train,
-        molecule=molecule,
-        log=True,
-    )
+
     model.train()
     model.to(device)
 
@@ -274,6 +270,12 @@ def train_md17_energy_force(model, n_train, molecule, lr):
     # Training loop
     losses = []
     with tqdm(unit="batch") as pbar:
+        dataset_iterator, _ = load_data(
+            Dataset.md17,
+            n_train=n_train,
+            molecule=molecule,
+            log=True,
+        )
         for data, E in dataset_iterator:
             batch_size = len(data["N"])
             E = E.view(-1, 1)
