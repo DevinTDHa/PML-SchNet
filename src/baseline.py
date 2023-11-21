@@ -82,9 +82,11 @@ def train_baseline(model, n_train, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
+            print(f"DEBUG: USING DEVICE {device}")
             X_batch["N"] = X_batch["N"].to(device)
             X_batch["Z"] = X_batch["Z"].to(device)
-            loss = criterion(model(X_batch), y_batch.to(device))
+            y_batch = y_batch.to(device)
+            loss = criterion(model(X_batch), y_batch)
             # Backward pass and optimization
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
