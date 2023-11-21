@@ -19,6 +19,7 @@ parser.add_argument("-n", "--n_train", type=int, default=100, help="number of tr
 parser.add_argument("-M", "--train_mode", type=str, default=None,
                     help=f"Pre-Configured training bundles, always force+energy if applicable. One of {train_modes.keys()}")
 args = parser.parse_args()
+print("ARGS ARE :",args)
 
 print("CUDA AVAILABLE:", torch.cuda.is_available())
 
@@ -32,7 +33,7 @@ if args.train_mode:
             print(f"Training {trainable}")
             try:
                 print("Training...")
-                train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.lr)
+                train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.learning_rate)
                 results[str(trainable)]['success'] = True
             except Exception as e:
                 results[str(trainable)]['success'] = False
@@ -47,4 +48,4 @@ else:
         task=args.task,
         molecule=args.molecule
     )
-    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.lr)
+    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.learning_rate)
