@@ -1,0 +1,52 @@
+from dataclasses import dataclass
+
+
+class Task:
+    energy = 'energy'
+    force = 'force'
+
+
+class Dataset:
+    qm9 = 'QM9'
+    md17 = 'MD17'
+    iso17 = 'ISO17'
+
+
+class Model:
+    baseline = 'baseline'
+    schnet = 'schnet'
+
+
+@dataclass
+class Trainable:
+    dataset: str
+    task: str
+    molecule: str = None
+
+
+valid_molecules = [
+    "aspirin",
+    "azobenzene",
+    "benzene",
+    "ethanol",
+    "malonaldehyde",
+    "naphthalene",
+    "paracetamol",
+    "salicylic_acid",
+    "toluene",
+    "uracil",
+]
+
+md17_trainable_all = [Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules] + \
+                     [Trainable(Dataset.md17, Task.force, m) for m in valid_molecules]
+
+md17_trainable_one_molecule = [Trainable(Dataset.md17, Task.energy, 'aspirin'),
+                               Trainable(Dataset.md17, Task.force, 'aspirin')]
+
+iso17_trainable = [Trainable(Dataset.iso17, Task.energy), Trainable(Dataset.iso17, Task.force)]
+qm9_trainable = [Trainable(Dataset.qm9, "energy")]
+
+all_trainable = md17_trainable_all + iso17_trainable + qm9_trainable
+all_trainable_one_molecule = md17_trainable_one_molecule + iso17_trainable + qm9_trainable
+
+cache_dir = './'
