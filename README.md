@@ -19,6 +19,7 @@ https://tubcloud.tu-berlin.de/s/nekRGHF25Wt5Wko
 ### Get a GPU Shell 
 `srun --partition=gpu-test --gpus=1 --pty bash   # Connect to GPU shell`
 
+### Run Training
 
 ```bash
 # 1) 
