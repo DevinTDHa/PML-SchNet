@@ -14,7 +14,7 @@ https://tubcloud.tu-berlin.de/s/nekRGHF25Wt5Wko
 ## Useful commands
 
 ### SSH into server
-`sh scripts/cluster/connect.sh`
+`cd scripts && sh connect.sh`
 
 ### Get a GPU Shell 
 `srun --partition=gpu-test --gpus=1 --pty bash   # Connect to GPU shell`
