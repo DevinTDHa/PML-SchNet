@@ -39,7 +39,6 @@ valid_molecules = [
 
 md17_trainable_all = [Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules] + \
                      [Trainable(Dataset.md17, Task.force, m) for m in valid_molecules]
-
 md17_trainable_one_molecule = [Trainable(Dataset.md17, Task.energy, 'aspirin'),
                                Trainable(Dataset.md17, Task.force, 'aspirin')]
 
@@ -48,5 +47,14 @@ qm9_trainable = [Trainable(Dataset.qm9, "energy")]
 
 all_trainable = md17_trainable_all + iso17_trainable + qm9_trainable
 all_trainable_one_molecule = md17_trainable_one_molecule + iso17_trainable + qm9_trainable
+
+train_modes = {
+    'md17_all_molecules': md17_trainable_all,
+    'md17_one_molecule': md17_trainable_one_molecule,
+    'iso17': iso17_trainable,
+    'qm9': qm9_trainable,
+    'all': all_trainable,
+    'all_one_molecule': all_trainable_one_molecule,
+}
 
 cache_dir = './'
