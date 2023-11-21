@@ -191,11 +191,13 @@ class BaselineModelMD17AspirinEnergyForce(nn.Module):
 
 
 def train_md17(model, n_train, molecule, lr=0.01):
+
     model.to(device)
     model.train()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
+    label = "energy"
 
     # Specific for Aspirin
     E_mu, E_std = (torch.tensor(-406737.276528638), torch.tensor(5.94684041516964))
@@ -262,7 +264,8 @@ def validate_md17(model, molecule, n_train, criterion=nn.MSELoss()):
     return np.array(val_loss).mean()
 
 
-def train_md17_energy_force(model, dataset_iterator, n_train, molecule, lr):
+def train_md17_energy_force(model, n_train, molecule, lr):
+
     model.train()
     model.to(device)
 
