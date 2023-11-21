@@ -32,7 +32,7 @@ if args.train_mode:
             print(f"Training {trainable}")
             try:
                 print("Training...")
-                train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train)
+                train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.lr)
                 results[str(trainable)]['success'] = True
             except Exception as e:
                 results[str(trainable)]['success'] = False
@@ -47,4 +47,4 @@ else:
         task=args.task,
         molecule=args.molecule
     )
-    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train)
+    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.lr)
