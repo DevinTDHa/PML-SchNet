@@ -34,7 +34,8 @@ class BaselineModel(nn.Module):
                 len(n_atoms),
             ).tolist(),
         )
-        batch_means = torch.tensor([pred.sum() for pred in Y_batch])
+        batch_means = torch.tensor([pred.sum() for pred in Y_batch], device=device)
+
         batch_means.requires_grad_()
         return batch_means
 
@@ -82,7 +83,6 @@ def train_baseline(model, n_train, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            print(f"DEBUG: USING DEVICE {device}")
             X_batch["N"] = X_batch["N"].to(device)
             X_batch["Z"] = X_batch["Z"].to(device)
             y_batch = y_batch.to(device)
