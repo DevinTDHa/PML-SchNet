@@ -63,7 +63,7 @@ def load_data(
                 f"Please choose one of the following molecules : {valid_molecules}"
             )
         data = MD17(
-            os.path.join(cache_dir, "md17.db"),
+            os.path.join(cache_dir, f"md17_{molecule}.db"),
             # fold = 'reference', # !! new param
             molecule=molecule,
             batch_size=batch_size,
