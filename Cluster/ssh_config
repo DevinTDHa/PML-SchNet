@@ -1,0 +1,4 @@
+Host cluster
+    User pml00
+    Hostname hydra.ml.tu-berlin.de
+    IdentityFile ssh_keys/pml_id_rsa
