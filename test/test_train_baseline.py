@@ -1,9 +1,11 @@
 from src.baseline import *
 from src.data_loader import load_data
 
+import pytest
 
-def test_train_qm9():
-    train_qm9(BaselineModelQM9(), "QM9", 5)
+@pytest.mark.parametrize("dataset", ["QM9", "MD17", "ISO17"])
+def test_train(dataset):
+    train(BaselineModel(), dataset, 5)
 
 
 def test_train_md17():
