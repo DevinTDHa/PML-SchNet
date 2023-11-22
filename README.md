@@ -8,7 +8,7 @@ network for modeling quantum interactions](https://arxiv.org/pdf/1706.08566.pdf)
 
 
 https://github.com/DevinTDHa/PML-SchNet/assets/33089471/f73b561e-d28c-4848-afc0-f27a2f2f6d39
-https://tubcloud.tu-berlin.de/s/nekRGHF25Wt5Wko
+
 
 
 ## Useful commands
