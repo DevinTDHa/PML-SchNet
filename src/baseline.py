@@ -96,9 +96,7 @@ def train_baseline(model, n_train, n_test, lr, epochs, dataset):
         print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
         losses.append({"epoch": epoch, "loss": loss.item()})
     plot_loss(losses)
-    return losses
-
-
+    return losses[-1]['loss']
 def validate(model, dataset, task, molecule, n_train, n_test):
     if dataset == "QM9":
         return validate_qm9(model, dataset, n_train, n_test)
@@ -107,24 +105,24 @@ def validate(model, dataset, task, molecule, n_train, n_test):
     elif dataset == "MD17" and task == Task.force:
         return validate_md17_energy_force(model, molecule, n_train, n_test)
     elif dataset == "ISO17":
+        # TODO
         raise NotImplementedError("ISO17 validation not implemented yet")
         # return validate_iso17(model, dataset)
-
-
-def train_and_validate(trainable: Trainable, model='baseline', n_train=100, n_test=100, lr=0.2, epochs=2):
+def train_and_validate(trainable: Trainable, model='baseline', n_train=10, n_test=10, lr=0.2, epochs=2):
     print("Training...")
-    model, test_losses = train(model=model, dataset=trainable.dataset, task=trainable.task,
-                               molecule=trainable.molecule,
-                               epochs=epochs, n_train=n_train, n_test=n_test, lr=lr)
-    if trainable.dataset == Dataset.md17:
+    model, train_loss = train(model=model, dataset=trainable.dataset, task=trainable.task,
+                              molecule=trainable.molecule,
+                              epochs=epochs, n_train=n_train, n_test=n_test, lr=lr)
+    print('Training loss : ', train_loss)
+    if trainable.dataset in [Dataset.md17,Dataset.qm9]:
         #     TODO validation for other models
-        print("Validation...")
-        val_loss = validate(model, trainable.dataset, trainable.task, n_train=n_train, n_test=n_test,
-                            molecule=trainable.molecule)
-        print(val_loss)
+        test_loss = validate(model, trainable.dataset, trainable.task, n_train=n_train, n_test=n_test,
+                             molecule=trainable.molecule)
+        print('Test loss : ', test_loss)
     else:
-        print("Validation not implemented for this dataset")
-
+        test_loss = 0
+        print("Test loss not implemented for dataset ", trainable.dataset)
+    return train_loss, test_loss
 
 def validate_qm9(model, dataset, n_train, n_test):
     # Validation step
@@ -134,9 +132,12 @@ def validate_qm9(model, dataset, n_train, n_test):
     model.eval()
     with torch.no_grad():
         val_loss = []
-        for data in test_gen:
-            X_batch = data_to_dic(data)
-            y_batch = data[label].float()
+        for X_batch, y_batch in train_gen:
+            X_batch["N"] = X_batch["N"].to(device)
+            X_batch["Z"] = X_batch["Z"].to(device)
+            y_batch = y_batch.to(device)
+
+
             val_loss.append(criterion(model(X_batch), y_batch).item())
     mean_loss = torch.Tensor(val_loss).mean()
     return mean_loss
