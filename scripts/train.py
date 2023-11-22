@@ -39,8 +39,8 @@ if args.train_mode:
                                                           n_test=args.n_test,
                                                           lr=args.learning_rate)
                 results[str(trainable)]['success'] = True
-                results[str(trainable)]['train_loss'] = True
-                results[str(trainable)]['test_loss'] = True
+                results[str(trainable)]['train_loss'] = train_loss
+                results[str(trainable)]['test_loss'] = test_loss
             except Exception as e:
                 results[str(trainable)]['success'] = False
                 import traceback
