@@ -24,7 +24,7 @@ class Trainable:
     molecule: str = None
 
 valid_molecules = {
-    "aspirin": 21,
+    "aspirin": 20,
     "azobenzene": 12,
     "benzene": 6,
     "ethanol": 9,
