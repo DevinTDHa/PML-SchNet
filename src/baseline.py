@@ -146,7 +146,7 @@ def validate_baseline(model, dataset, n_train, n_test):
             y_batch = y_batch.to(device)
             val_loss.append(criterion(model(X_batch), y_batch).item())
     mean_loss = torch.Tensor(val_loss).mean()
-    return mean_loss
+    return int(mean_loss.numpy())
 
 
 def plot_loss(losses):
@@ -240,7 +240,7 @@ def train_md17(model, n_train, n_test, molecule, lr=0.01):
 
             pbar.set_postfix({"Loss": loss.item()})
             pbar.update()
-    return losses
+    return losses[0]
 
 
 def validate_md17(model, molecule, n_train, n_test, criterion=nn.MSELoss()):
