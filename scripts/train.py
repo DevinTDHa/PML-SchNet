@@ -16,6 +16,7 @@ parser.add_argument("-t", "--task", type=str, default="energy", help="energy or 
 parser.add_argument("-e", "--epochs", type=int, default=50, help="Number of epochs")
 parser.add_argument("-lr", "--learning_rate", type=float, default=0.001, help="Learning rate")
 parser.add_argument("-n", "--n_train", type=int, default=100, help="number of training samples")
+parser.add_argument("-nt", "--n_test", type=int, default=100, help="number of test samples")
 parser.add_argument("-M", "--train_mode", type=str, default=None,
                     help=f"Pre-Configured training bundles, always force+energy if applicable. One of {train_modes.keys()}")
 args = parser.parse_args()
@@ -33,9 +34,13 @@ if args.train_mode:
             print(f"Training {trainable}")
             try:
                 print("Training...")
-                train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train,
-                                   lr=args.learning_rate)
+                train_loss, val_loss = train_and_validate(trainable, 'baseline', epochs=args.epochs,
+                                                          n_train=args.n_train,
+                                                          n_test=args.n_test,
+                                                          lr=args.learning_rate)
                 results[str(trainable)]['success'] = True
+                results[str(trainable)]['train_loss'] = True
+                results[str(trainable)]['val_loss'] = True
             except Exception as e:
                 results[str(trainable)]['success'] = False
                 import traceback
@@ -53,4 +58,7 @@ else:
         task=args.task,
         molecule=args.molecule
     )
-    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.learning_rate)
+    train_and_validate(trainable, 'baseline', epochs=args.epochs, n_train=args.n_train, lr=args.learning_rate,
+                       n_test=args.n_test,
+                       )
+
