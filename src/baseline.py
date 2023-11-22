@@ -99,22 +99,19 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
     return losses[-1]['loss']
 def validate(model, dataset, task, molecule, n_train, n_test):
     if dataset == "QM9":
-        return validate_qm9(model, dataset, n_train, n_test)
+        return validate_baseline(model, dataset, n_train, n_test)
     elif dataset == "MD17" and task == Task.energy:
         return validate_md17(model, molecule, n_train, n_test)
     elif dataset == "MD17" and task == Task.force:
         return validate_md17_energy_force(model, molecule, n_train, n_test)
     elif dataset == "ISO17":
-        return validate_qm9(model, dataset, n_train, n_test)
-        # raise NotImplementedError("ISO17 validation not implemented yet")
-        # return validate_iso17(model, dataset)
+        return validate_baseline(model, dataset, n_train, n_test)
 def train_and_validate(trainable: Trainable, model='baseline', n_train=10, n_test=10, lr=0.2, epochs=2):
     print("Training...")
     model, train_loss = train(model=model, dataset=trainable.dataset, task=trainable.task,
                               molecule=trainable.molecule,
                               epochs=epochs, n_train=n_train, n_test=n_test, lr=lr)
     print('Training loss : ', train_loss)
-    # if trainable.dataset in [Dataset.md17,Dataset.qm9]:
     test_loss = validate(model, trainable.dataset, trainable.task, n_train=n_train, n_test=n_test,
                          molecule=trainable.molecule)
     print('Test loss : ', test_loss)
@@ -136,7 +133,7 @@ def validate_qm9(model, dataset, n_train, n_test):
     mean_loss = torch.Tensor(val_loss).mean()
     return mean_loss
 
-def validate_qm9(model, dataset, n_train, n_test):
+def validate_baseline(model, dataset, n_train, n_test):
     # Validation step
     criterion = nn.MSELoss()
     train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
