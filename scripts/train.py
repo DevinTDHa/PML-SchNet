@@ -34,13 +34,13 @@ if args.train_mode:
             print(f"Training {trainable}")
             try:
                 print("Training...")
-                train_loss, val_loss = train_and_validate(trainable, 'baseline', epochs=args.epochs,
+                train_loss, test_loss = train_and_validate(trainable, 'baseline', epochs=args.epochs,
                                                           n_train=args.n_train,
                                                           n_test=args.n_test,
                                                           lr=args.learning_rate)
                 results[str(trainable)]['success'] = True
                 results[str(trainable)]['train_loss'] = True
-                results[str(trainable)]['val_loss'] = True
+                results[str(trainable)]['test_loss'] = True
             except Exception as e:
                 results[str(trainable)]['success'] = False
                 import traceback
@@ -62,3 +62,5 @@ else:
                        n_test=args.n_test,
                        )
 
+# TODO maybe broken ./iso17.db/iso17/reference_eq.db:
+# Todo make sure we always take max datasize??
