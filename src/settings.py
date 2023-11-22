@@ -30,7 +30,7 @@ valid_molecules = {
     "ethanol": 9,
     "malonaldehyde": 9,
     "naphthalene": 18,
-    "paracetamol": 19,
+    "paracetamol": 20,
     "salicylic_acid": 16,
     "toluene": 15,
     "uracil": 12,
