@@ -5,11 +5,11 @@ from pprint import pprint
 
 import torch
 
-from pml_schnet.baseline import train_and_validate
-from pml_schnet.settings import train_modes, Trainable
 
 sys.path.append(os.getcwd())
 
+from pml_schnet.baseline import train_and_validate
+from pml_schnet.settings import train_modes, Trainable
 
 parser = argparse.ArgumentParser(description="Train a model")
 parser.add_argument(
