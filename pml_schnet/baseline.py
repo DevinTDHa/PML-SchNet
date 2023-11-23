@@ -58,7 +58,7 @@ def train(
             model_obj, n_train, n_test, lr, epochs, dataset
         )
     elif model == Model.baseline and task == Task.energy:
-        return model_obj, train_md17(model_obj, n_train, n_test, molecule, lr)
+        return model_obj, train_baseline_energy(model_obj, n_train, n_test, lr, epochs, dataset)
 
     else:
         raise ValueError("Invalid Task or Dataset, could not train model")
@@ -68,9 +68,9 @@ def validate(model, dataset, task, molecule, n_train, n_test):
     if task == Task.energy:
         return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
     elif task == Task.force:
-        return validate_baseline_force(model, molecule, n_train, n_test)
+        return validate_baseline_force(model, dataset, n_train, n_test, molecule)
     elif task == Task.energy_and_force:
-        return validate_baseline_energy_force(model, molecule, n_train, n_test)
+        return validate_baseline_energy_force(model, dataset, n_train, n_test, molecule)
 
 
 def train_and_validate(
@@ -103,17 +103,18 @@ def train_and_validate(
 
 def get_model(model, dataset, task, molecule="aspirin"):
     if model == Model.baseline:
-        if dataset in [Dataset.qm9, Dataset.iso17]:
-            return BaselineModel()
-        elif dataset == Dataset.md17:
-            if molecule is None:
-                raise ValueError("Please specify a molecule for md17")
-            if task == "energy":
-                return BaselineModelMD17AspirinEnergy(molecule)
-            elif task == "force":
-                return BaselineModelMD17AspirinEnergyForce(molecule)
-            else:
-                raise ValueError("Invalid Task or Dataset, could not load model")
+        return BaselineModel()
+        # if dataset in [Dataset.qm9, Dataset.iso17]:
+        #     return BaselineModel()
+        # elif dataset == Dataset.md17:
+        #     if molecule is None:
+        #         raise ValueError("Please specify a molecule for md17")
+        #     if task == "energy":
+        #         return BaselineModelMD17AspirinEnergy(molecule)
+        #     elif task == "force":
+        #         return BaselineModelMD17AspirinEnergyForce(molecule)
+        #     else:
+        #         raise ValueError("Invalid Task or Dataset, could not load model")
     elif model == Model.schnet:
         raise NotImplemented("Schnet not implemented yet")
     else:
@@ -135,6 +136,39 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
             X_batch["R"] = X_batch["R"].to(device).float()
             y_batch = y_batch.to(device)
             loss = criterion(model(X_batch), y_batch)
+            # Backward pass and optimization
+            optimizer.zero_grad()  # Clear gradients
+            loss.backward()  # Compute gradients
+            optimizer.step()  # Update weights
+        print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
+        losses.append({"epoch": epoch, "loss": loss.item()})
+    # plot_loss(losses)
+    return losses[-1]["loss"]
+
+
+def train_baseline_force(model, n_train, n_test, lr, epochs, dataset):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.MSELoss()
+    losses = []
+    model.train()
+    for epoch in tqdm(range(epochs)):
+        train_gen, test_gen = load_data(dataset, n_train, n_test)
+        loss = None
+        for X_batch, y_batch in train_gen:
+            # Forward pass
+            X_batch["N"] = X_batch["N"].to(device)
+            X_batch["Z"] = X_batch["Z"].to(device)
+            X_batch["R"] = X_batch["R"].to(device)
+            X_batch["R"].requires_grad_()
+
+            target_F = X_batch["F"].to(device)
+            target_F.requires_grad_()
+
+            E_pred = model(X_batch)
+
+            F_pred = derive_force(E_pred, X_batch["R"])
+
+            loss = criterion(F_pred, target_F)
             # Backward pass and optimization
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
@@ -190,10 +224,10 @@ def validate_baseline_energy(model, dataset, n_train, n_test, molecule):
     return mean_loss.numpy()
 
 
-def validate_baseline_force(model, dataset, n_train, n_test):
+def validate_baseline_force(model, dataset, n_train, n_test, molecule):
     # Validation step
     criterion = nn.L1Loss()
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
+    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test, molecule=molecule)
     model.eval()
     with torch.no_grad():
         val_loss = []
@@ -216,9 +250,9 @@ def validate_baseline_force(model, dataset, n_train, n_test):
     return mean_loss.numpy()
 
 
-def validate_baseline_energy_force(model, dataset, n_train, n_test):
+def validate_baseline_energy_force(model, dataset, n_train, n_test, molecule):
     # Validation step
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
+    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test, molecule=molecule)
     model.eval()
     val_loss = []
     for X_batch, y_batch in train_gen:
@@ -238,6 +272,7 @@ def validate_baseline_energy_force(model, dataset, n_train, n_test):
 
 
 def plot_loss(losses):
+    return
     fig = px.line(pd.DataFrame(losses), x="epoch", y="loss", title="Loss over epoch")
     fig.show()
 
@@ -406,36 +441,110 @@ def train_md17_energy_force(model, n_train, n_test, molecule, lr):
             pbar.update()
 
 
-def validate_md17_energy_force(model, molecule, n_train, n_test):
-    _, dataset_iterator = load_data(
-        Dataset.md17,
-        n_train=n_train,
-        n_test=n_test,
-        molecule=molecule,
-        log=True,
-    )
-    # Validation step
-    model.eval()
-    # with torch.no_grad():
-    val_loss = []
-    for data, y_batch in tqdm(dataset_iterator):
-        batch_size = len(data["N"])
-        y_batch = y_batch.view(-1, 1)
-        X_batch = data["R"].view(batch_size, -1)
-        X_batch.requires_grad_()
-        F_batch = data["F"].view(batch_size, -1)
-        X_batch, y_batch, F_batch = (
-            X_batch.to(device),
-            y_batch.to(device),
-            F_batch.to(device),
-        )
+# def validate_md17_energy_force(model, molecule, n_train, n_test):
+#     _, dataset_iterator = load_data(
+#         Dataset.md17,
+#         n_train=n_train,
+#         n_test=n_test,
+#         molecule=molecule,
+#         log=True,
+#     )
+#     # Validation step
+#     model.eval()
+#     # with torch.no_grad():
+#     val_loss = []
+#     for data, y_batch in tqdm(dataset_iterator):
+#         batch_size = len(data["N"])
+#         y_batch = y_batch.view(-1, 1)
+#         X_batch = data["R"].view(batch_size, -1)
+#         X_batch.requires_grad_()
+#         F_batch = data["F"].view(batch_size, -1)
+#         X_batch, y_batch, F_batch = (
+#             X_batch.to(device),
+#             y_batch.to(device),
+#             F_batch.to(device),
+#         )
+#
+#         # Forward pass
+#         E_pred = model(X_batch)
+#         E = y_batch
+#         loss = energy_force_loss(
+#             E_pred, X_batch, E, F_batch
+#         )  # Ensure y_batch is the correct shape
+#         val_loss.append(loss.item())
+#     # print(f"Epoch {epoch+1}, Val Loss: {val_loss:.4f}")
+#     np.array(val_loss).mean()
 
-        # Forward pass
-        E_pred = model(X_batch)
-        E = y_batch.float()
-        loss = energy_force_loss(
-            E_pred, X_batch, E, F_batch
-        )  # Ensure y_batch is the correct shape
-        val_loss.append(loss.item())
-    # print(f"Epoch {epoch+1}, Val Loss: {val_loss:.4f}")
-    np.array(val_loss).mean()
+
+# def train_md17(model, n_train, n_test, molecule, lr=0.01):
+#     model.to(device)
+#     model.train()
+#
+#     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+#     criterion = nn.L1Loss()
+#
+#     # Specific for Aspirin
+#     E_mu, E_std = (torch.tensor(-406737.276528638), torch.tensor(5.94684041516964))
+#     # Training loop
+#     losses = []
+#     # with tqdm(total=len(dataset_iterator), unit="batch") as pbar:
+#     with tqdm(unit="batch") as pbar:
+#         dataset_iterator, _ = load_data(
+#             Dataset.md17,
+#             n_train=n_train,
+#             n_test=n_test,
+#             molecule=molecule,
+#             log=True,
+#         )
+#         for data, y_batch in dataset_iterator:
+#             batch_size = len(data["N"])
+#             y_batch = (y_batch.view(-1, 1) - E_mu) / E_std
+#             X_batch = data["R"].view(batch_size, -1)
+#             X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+#
+#             # Forward pass
+#             loss = criterion(
+#                 model(X_batch), y_batch
+#             )  # Ensure y_batch is the correct shape
+#             losses.append(loss.item())
+#
+#             # Backward pass and optimization
+#             optimizer.zero_grad()  # Clear gradients
+#             loss.backward()  # Compute gradients
+#             optimizer.step()  # Update weights
+#
+#             pbar.set_postfix({"Loss": loss.item()})
+#             pbar.update()
+#     return losses[0]
+
+
+# def validate_md17(model, molecule, n_train, n_test, criterion=nn.L1Loss()):
+#     _, dataset_iterator = load_data(
+#         Dataset.md17,
+#         n_train=n_train,
+#         n_test=n_test,
+#         molecule=molecule,
+#         log=True,
+#     )
+#     # Validation step
+#     model.eval()
+#     # with torch.no_grad():
+#     E_mu, E_std = (torch.tensor(-406737.276528638), torch.tensor(5.94684041516964))
+#
+#     val_loss = []
+#     for data, y_batch in tqdm(dataset_iterator, unit="batch"):
+#         batch_size = len(data["N"])
+#         y_batch = (y_batch.view(-1, 1) - E_mu) / E_std
+#         X_batch = data["R"].view(batch_size, -1)
+#         X_batch, y_batch = (
+#             X_batch.to(device),
+#             y_batch.to(device),
+#         )
+#
+#         # Forward pass
+#         E_pred = model(X_batch)
+#         E = y_batch
+#         loss = criterion(E, E_pred)
+#         val_loss.append(loss.item())
+#
+#     return np.array(val_loss).mean()

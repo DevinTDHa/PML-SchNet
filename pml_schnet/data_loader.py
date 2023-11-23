@@ -16,15 +16,15 @@ def data_to_dic(x, dataset):
     if dataset == "QM9":
         return {
             "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
-            "R": x[properties.position],  # atomic positions `R` is `_positions`
+            "R": x[properties.position].float(),  # atomic positions `R` is `_positions`
             "N": x[properties.n_atoms],  # Number of atoms
         }
     else:
         return {
             "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
-            "R": x[properties.position],  # atomic positions `R` is `_positions`
+            "R": x[properties.position].float(),  # atomic positions `R` is `_positions`
             "N": x[properties.n_atoms],  # Number of atoms
-            "F": x[force_label[dataset]],
+            "F": x[force_label[dataset]].float(),
         }
 
 
@@ -88,7 +88,7 @@ def load_data(
             split_file=None,
         )
     else:
-        raise ValueError("Only QM9, MD17 and ISO17 are supported but used " + dataset)
+        raise ValueError("Only QM9, MD17 and ISO17 are supported but used " ,dataset)
 
     data.prepare_data()
     data.setup()
