@@ -1,4 +1,4 @@
-import numpy as np
+import pandas as pd
 import pandas as pd
 import plotly.express as px
 import torch
@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from pml_schnet.data_loader import load_data
 from pml_schnet.loss import energy_force_loss, derive_force
-from pml_schnet.settings import Dataset, Model, Task, Trainable, valid_molecules
+from pml_schnet.settings import Model, Task, Trainable
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -39,7 +39,7 @@ class BaselineModel(nn.Module):
 
 
 def train(
-        model, dataset, task, molecule=None, epochs=1, lr=0.01, n_train=100, n_test=100
+    model, dataset, task, molecule=None, epochs=1, lr=0.01, n_train=100, n_test=100
 ):
     # generic train router for all models
     global device
@@ -58,7 +58,9 @@ def train(
             model_obj, n_train, n_test, lr, epochs, dataset
         )
     elif model == Model.baseline and task == Task.energy:
-        return model_obj, train_baseline_energy(model_obj, n_train, n_test, lr, epochs, dataset)
+        return model_obj, train_baseline_energy(
+            model_obj, n_train, n_test, lr, epochs, dataset
+        )
 
     else:
         raise ValueError("Invalid Task or Dataset, could not train model")
@@ -74,7 +76,7 @@ def validate(model, dataset, task, molecule, n_train, n_test):
 
 
 def train_and_validate(
-        trainable: Trainable, model="baseline", n_train=10, n_test=10, lr=0.2, epochs=2
+    trainable: Trainable, model="baseline", n_train=10, n_test=10, lr=0.2, epochs=2
 ):
     print("Training...")
     model, train_loss = train(
@@ -131,9 +133,9 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            X_batch["N"] = X_batch["N"].to(device).long()
-            X_batch["Z"] = X_batch["Z"].to(device).long()
-            X_batch["R"] = X_batch["R"].to(device).float()
+            X_batch["N"] = X_batch["N"].to(device)
+            X_batch["Z"] = X_batch["Z"].to(device)
+            X_batch["R"] = X_batch["R"].to(device)
             y_batch = y_batch.to(device)
             loss = criterion(model(X_batch), y_batch)
             # Backward pass and optimization
@@ -188,12 +190,12 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            X_batch["N"] = X_batch["N"].to(device).long()
-            X_batch["Z"] = X_batch["Z"].to(device).long()
-            X_batch["R"] = X_batch["R"].to(device).float()
+            X_batch["N"] = X_batch["N"].to(device)
+            X_batch["Z"] = X_batch["Z"].to(device)
+            X_batch["R"] = X_batch["R"].to(device)
 
             X_batch["R"].requires_grad_()
-            F = X_batch["F"].to(device).float()
+            F = X_batch["F"].to(device)
             y_batch = y_batch.to(device)
             E_pred = model(X_batch)
             loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
@@ -210,14 +212,16 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
 def validate_baseline_energy(model, dataset, n_train, n_test, molecule):
     # Validation step
     criterion = nn.L1Loss()
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test,molecule=molecule)
+    train_gen, test_gen = load_data(
+        dataset, n_train=n_train, n_test=n_test, molecule=molecule
+    )
     model.eval()
     with torch.no_grad():
         val_loss = []
         for X_batch, y_batch in train_gen:
-            X_batch["N"] = X_batch["N"].to(device).long()
-            X_batch["Z"] = X_batch["Z"].to(device).long()
-            X_batch["R"] = X_batch["R"].to(device).float()
+            X_batch["N"] = X_batch["N"].to(device)
+            X_batch["Z"] = X_batch["Z"].to(device)
+            X_batch["R"] = X_batch["R"].to(device)
             y_batch = y_batch.to(device)
             val_loss.append(criterion(model(X_batch), y_batch).item())
     mean_loss = torch.Tensor(val_loss).mean()
@@ -227,41 +231,46 @@ def validate_baseline_energy(model, dataset, n_train, n_test, molecule):
 def validate_baseline_force(model, dataset, n_train, n_test, molecule):
     # Validation step
     criterion = nn.L1Loss()
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test, molecule=molecule)
+    train_gen, test_gen = load_data(
+        dataset, n_train=n_train, n_test=n_test, molecule=molecule
+    )
     model.eval()
-    with torch.no_grad():
-        val_loss = []
-        for X_batch, y_batch in train_gen:
-            # Forward pass
-            X_batch["N"] = X_batch["N"].to(device).long()
-            X_batch["Z"] = X_batch["Z"].to(device).long()
-            X_batch["R"] = X_batch["R"].to(device).float()
 
-            target_F = X_batch["F"].to(device)
-            target_F.requires_grad_()
+    val_loss = []
+    for X_batch, y_batch in train_gen:
+        # Forward pass
+        X_batch["N"] = X_batch["N"].to(device)
+        X_batch["Z"] = X_batch["Z"].to(device)
+        X_batch["R"] = X_batch["R"].to(device)
+        X_batch["R"].requires_grad_()
 
-            E_pred = model(X_batch)
+        target_F = X_batch["F"].to(device)
+        target_F.requires_grad_()
 
-            F_pred = derive_force(E_pred, X_batch["R"])
+        E_pred = model(X_batch)
 
-            loss = criterion(F_pred, target_F)
-            val_loss.append(loss.item())
+        F_pred = derive_force(E_pred, X_batch["R"])
+
+        loss = criterion(F_pred, target_F)
+        val_loss.append(loss.item())
     mean_loss = torch.Tensor(val_loss).mean()
     return mean_loss.numpy()
 
 
 def validate_baseline_energy_force(model, dataset, n_train, n_test, molecule):
     # Validation step
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test, molecule=molecule)
+    train_gen, test_gen = load_data(
+        dataset, n_train=n_train, n_test=n_test, molecule=molecule
+    )
     model.eval()
     val_loss = []
     for X_batch, y_batch in train_gen:
-        X_batch["N"] = X_batch["N"].to(device).long()
-        X_batch["Z"] = X_batch["Z"].to(device).long()
-        X_batch["R"] = X_batch["R"].to(device).float()
+        X_batch["N"] = X_batch["N"].to(device)
+        X_batch["Z"] = X_batch["Z"].to(device)
+        X_batch["R"] = X_batch["R"].to(device)
 
         X_batch["R"].requires_grad_()
-        F = X_batch["F"].to(device).float()
+        F = X_batch["F"].to(device)
         y_batch = y_batch.to(device)
         E_pred = model(X_batch)
         loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
@@ -283,6 +292,7 @@ def data_to_dic(x):
         "R": x[properties.position],  # atomic positions `R` is `_positions`
         "N": x[properties.n_atoms],
     }
+
 
 
 class BaselineModelMD17AspirinEnergy(nn.Module):
