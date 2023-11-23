@@ -65,16 +65,12 @@ def train(
 
 
 def validate(model, dataset, task, molecule, n_train, n_test):
-    if dataset == "QM9":
-        return validate_baseline(model, dataset, n_train, n_test)
-    elif dataset == "MD17" and task == Task.energy:
-        return validate_md17(model, molecule, n_train, n_test)
-    elif dataset == "MD17" and task == Task.force:
-        return validate_md17_energy_force(model, molecule, n_train, n_test)
-    elif dataset == "ISO17" and task == Task.energy:
-        return validate_baseline(model, dataset, n_train, n_test)
-    elif dataset == "ISO17" and task == Task.force:
-        return validate_baseline_force(model, dataset, n_train, n_test)
+    if task == Task.energy:
+        return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
+    elif task == Task.force:
+        return validate_baseline_force(model, molecule, n_train, n_test)
+    elif task == Task.energy_and_force:
+        return validate_baseline_energy_force(model, molecule, n_train, n_test)
 
 
 def train_and_validate(
@@ -177,26 +173,10 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
     return losses
 
 
-def validate_qm9(model, dataset, n_train, n_test):
+def validate_baseline_energy(model, dataset, n_train, n_test, molecule):
     # Validation step
     criterion = nn.L1Loss()
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
-    model.eval()
-    with torch.no_grad():
-        val_loss = []
-        for X_batch, y_batch in train_gen:
-            X_batch["N"] = X_batch["N"].to(device)
-            X_batch["Z"] = X_batch["Z"].to(device)
-            y_batch = y_batch.to(device)
-            val_loss.append(criterion(model(X_batch), y_batch).item())
-    mean_loss = torch.Tensor(val_loss).mean()
-    return mean_loss
-
-
-def validate_baseline(model, dataset, n_train, n_test):
-    # Validation step
-    criterion = nn.L1Loss()
-    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
+    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test,molecule=molecule)
     model.eval()
     with torch.no_grad():
         val_loss = []
@@ -400,7 +380,7 @@ def train_md17_energy_force(model, n_train, n_test, molecule, lr):
             pbar.update()
 
 
-def validate_md17_energy_force(model, molecule, n_train, n_test):
+def validate_baseline_energy_force(model, molecule, n_train, n_test):
     _, dataset_iterator = load_data(
         Dataset.md17,
         n_train=n_train,
