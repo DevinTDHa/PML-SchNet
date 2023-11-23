@@ -4,16 +4,16 @@ from schnetpack import properties
 from schnetpack.datasets import ISO17, QM9, MD17
 from schnetpack.transform import ASENeighborList
 
-from src.data_utils import fix_iso_17_db
-from src.settings import valid_molecules
-from src import settings
+from pml_schnet.data_utils import fix_iso_17_db
+from pml_schnet.settings import valid_molecules
+from pml_schnet import settings
 
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
 force_label = {"QM9": None, "MD17": "forces", "ISO17": "atomic_forces"}
 
 
 def data_to_dic(x, dataset):
-    if dataset == 'QM9':
+    if dataset == "QM9":
         return {
             "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
             "R": x[properties.position],  # atomic positions `R` is `_positions`
@@ -34,13 +34,14 @@ def get_generator(base_gen, dataset):
 
 
 def load_data(
-        dataset="QM9",
-        n_train=100,
-        n_test=100,
-        batch_size=32,
-        molecule="aspirin",
-        log=False,
-        cache_dir=settings.cache_dir,
+    dataset="QM9",
+    n_train=1000,
+    n_test=100,
+    batch_size=32,
+    molecule="aspirin",
+    log=False,
+    iso17_fold="reference",
+    cache_dir=settings.cache_dir,
 ):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
@@ -74,10 +75,11 @@ def load_data(
             split_file=None,
         )
     elif dataset == "ISO17":
-        fix_iso_17_db()
+        db_path = os.path.join(cache_dir, "iso17.db")
+        fix_iso_17_db(db_path)
         data = ISO17(
-            os.path.join(cache_dir, "iso17.db"),
-            fold="reference_eq",
+            db_path,
+            fold=iso17_fold,
             batch_size=batch_size,
             num_train=n_train,
             num_test=0,
@@ -104,6 +106,7 @@ def load_data(
         for p in data.dataset.available_properties:
             print("-", p)
     return get_generator(train, dataset), get_generator(test, dataset)
+
 
 # class SchnetDataset(Dataset):
 #     """Class to load datasets for Schnet."""
