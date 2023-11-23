@@ -4,6 +4,7 @@ from dataclasses import dataclass
 class Task:
     energy = "energy"
     force = "force"
+    energy_and_force = "energy_and_force"
 
 
 class Dataset:
@@ -37,24 +38,29 @@ valid_molecules = {
     "uracil": 12,
 }
 
-
 md17_trainable_all = [
-    Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules
-] + [Trainable(Dataset.md17, Task.force, m) for m in valid_molecules]
+                         Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules
+                     ] + [Trainable(Dataset.md17, Task.force, m) for m in valid_molecules
+                          ] + [Trainable(Dataset.md17, Task.energy_and_force, m) for m in valid_molecules]
+
+
+
 md17_trainable_one_molecule = [
     Trainable(Dataset.md17, Task.energy, "aspirin"),
     Trainable(Dataset.md17, Task.force, "aspirin"),
+    Trainable(Dataset.md17, Task.energy_and_force, "aspirin"),
 ]
 
 iso17_trainable = [
     Trainable(Dataset.iso17, Task.energy),
     Trainable(Dataset.iso17, Task.force),
+    Trainable(Dataset.iso17, Task.energy_and_force),
 ]
 qm9_trainable = [Trainable(Dataset.qm9, "energy")]
 
 all_trainable = md17_trainable_all + iso17_trainable + qm9_trainable
 all_trainable_one_molecule = (
-    md17_trainable_one_molecule + iso17_trainable + qm9_trainable
+        md17_trainable_one_molecule + iso17_trainable + qm9_trainable
 )
 
 train_modes = {
