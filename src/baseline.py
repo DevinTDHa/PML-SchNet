@@ -43,8 +43,6 @@ class BaselineModel(nn.Module):
         batch_means.requires_grad_()
         return batch_means
 
-
-
 def get_model(model, dataset, task, molecule='aspirin'):
     if model == Model.baseline:
         if dataset in [Dataset.qm9, Dataset.iso17]:
@@ -90,8 +88,9 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            X_batch["N"] = X_batch["N"].to(device)
-            X_batch["Z"] = X_batch["Z"].to(device)
+            X_batch["N"] = X_batch["N"].to(device).long()  
+            X_batch["Z"] = X_batch["Z"].to(device).long()  
+            X_batch["R"] = X_batch["R"].to(device).float()
             y_batch = y_batch.to(device)
             loss = criterion(model(X_batch), y_batch)
             # Backward pass and optimization
