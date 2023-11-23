@@ -250,11 +250,20 @@ def validate_baseline_force(model, dataset, n_train, n_test):
     with torch.no_grad():
         val_loss = []
         for X_batch, y_batch in train_gen:
+            # Forward pass
             X_batch["N"] = X_batch["N"].to(device).long()
             X_batch["Z"] = X_batch["Z"].to(device).long()
             X_batch["R"] = X_batch["R"].to(device).float()
-            y_batch = y_batch.to(device)
-            val_loss.append(criterion(model(X_batch), y_batch).item())
+
+            target_F = X_batch["F"].to(device)
+            target_F.requires_grad_()
+
+            E_pred = model(X_batch)
+
+            F_pred = derive_force(E_pred, X_batch["R"])
+
+            loss = criterion(F_pred, target_F)
+            val_loss.append(loss.item())
     mean_loss = torch.Tensor(val_loss).mean()
     return mean_loss.numpy()
 
