@@ -7,7 +7,7 @@ from torch import nn
 from tqdm import tqdm
 
 from pml_schnet.data_loader import load_data
-from pml_schnet.loss import energy_force_loss
+from pml_schnet.loss import energy_force_loss, derive_force
 from pml_schnet.settings import Dataset, Model, Task, Trainable, valid_molecules
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -191,6 +191,32 @@ def validate_baseline_energy(model, dataset, n_train, n_test, molecule):
 
 
 def validate_baseline_force(model, dataset, n_train, n_test):
+    # Validation step
+    criterion = nn.L1Loss()
+    train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
+    model.eval()
+    with torch.no_grad():
+        val_loss = []
+        for X_batch, y_batch in train_gen:
+            # Forward pass
+            X_batch["N"] = X_batch["N"].to(device).long()
+            X_batch["Z"] = X_batch["Z"].to(device).long()
+            X_batch["R"] = X_batch["R"].to(device).float()
+
+            target_F = X_batch["F"].to(device)
+            target_F.requires_grad_()
+
+            E_pred = model(X_batch)
+
+            F_pred = derive_force(E_pred, X_batch["R"])
+
+            loss = criterion(F_pred, target_F)
+            val_loss.append(loss.item())
+    mean_loss = torch.Tensor(val_loss).mean()
+    return mean_loss.numpy()
+
+
+def validate_baseline_energy_force(model, dataset, n_train, n_test):
     # Validation step
     train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
     model.eval()
@@ -380,7 +406,7 @@ def train_md17_energy_force(model, n_train, n_test, molecule, lr):
             pbar.update()
 
 
-def validate_baseline_energy_force(model, molecule, n_train, n_test):
+def validate_md17_energy_force(model, molecule, n_train, n_test):
     _, dataset_iterator = load_data(
         Dataset.md17,
         n_train=n_train,
