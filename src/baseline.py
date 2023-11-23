@@ -88,8 +88,8 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
         loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
-            X_batch["N"] = X_batch["N"].to(device).long()  
-            X_batch["Z"] = X_batch["Z"].to(device).long()  
+            X_batch["N"] = X_batch["N"].to(device).long()
+            X_batch["Z"] = X_batch["Z"].to(device).long()
             X_batch["R"] = X_batch["R"].to(device).float()
             y_batch = y_batch.to(device)
             loss = criterion(model(X_batch), y_batch)
@@ -145,8 +145,9 @@ def validate_baseline(model, dataset, n_train, n_test):
     with torch.no_grad():
         val_loss = []
         for X_batch, y_batch in train_gen:
-            X_batch["N"] = X_batch["N"].to(device)
-            X_batch["Z"] = X_batch["Z"].to(device)
+            X_batch["N"] = X_batch["N"].to(device).long()
+            X_batch["Z"] = X_batch["Z"].to(device).long()
+            X_batch["R"] = X_batch["R"].to(device).float()
             y_batch = y_batch.to(device)
             val_loss.append(criterion(model(X_batch), y_batch).item())
     mean_loss = torch.Tensor(val_loss).mean()
