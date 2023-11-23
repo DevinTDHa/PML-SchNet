@@ -15,29 +15,34 @@ label = "energy_U0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+
 class BaselineModel(nn.Module):
-    def __init__(self, max_embeddings=100, embedding_dim=8):
+    def __init__(self, max_atoms=100, embedding_dim=8, spatial_dim=16):
         super().__init__()
-        self.model = nn.Sequential(
-            nn.Embedding(max_embeddings, embedding_dim),
-            nn.Linear(embedding_dim, 1, bias=False),
+        self.embedding = nn.Embedding(max_atoms, embedding_dim)
+        self.spatial_processor = nn.Sequential(
+            nn.Linear(3, spatial_dim),
+            nn.ReLU(),
+            nn.Linear(spatial_dim, spatial_dim)
         )
+        self.combiner = nn.Linear(embedding_dim + spatial_dim, 1, bias=False)
 
     def forward(self, input):
         n_atoms = input["N"]
         Z = input["Z"]
+        R = input["R"]
 
-        y = self.model(Z)
-        Y_batch = torch.split(
-            y,
-            n_atoms.view(
-                len(n_atoms),
-            ).tolist(),
-        )
+        embedded_Z = self.embedding(Z)
+        processed_R = self.spatial_processor(R)
+        combined_features = torch.cat((embedded_Z, processed_R), dim=1)
+
+        y = self.combiner(combined_features)
+        Y_batch = torch.split(y, n_atoms.tolist())
         batch_means = torch.tensor([pred.sum() for pred in Y_batch], device=device)
 
         batch_means.requires_grad_()
         return batch_means
+
 
 
 def get_model(model, dataset, task, molecule='aspirin'):
