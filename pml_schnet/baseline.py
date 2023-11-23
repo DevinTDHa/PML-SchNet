@@ -38,6 +38,73 @@ class BaselineModel(nn.Module):
         return batch_means
 
 
+def train(
+        model, dataset, task, molecule=None, epochs=1, lr=0.01, n_train=100, n_test=100
+):
+    # generic train router for all models
+    global device
+    if molecule is not None and dataset != "MD17":
+        raise ValueError("Molecule can only be specified for MD17 dataset")
+    model_obj = get_model(model, dataset, task, molecule)
+    model_obj = model_obj.to(device)
+
+    if model == Model.baseline and task == Task.force:
+        return model_obj, train_baseline_force(
+            model_obj, n_train, n_test, lr, epochs, dataset
+        )
+
+    if model == Model.baseline and task == Task.energy_and_force:
+        return model_obj, train_baseline_energy_force(
+            model_obj, n_train, n_test, lr, epochs, dataset
+        )
+    elif model == Model.baseline and task == Task.energy:
+        return model_obj, train_md17(model_obj, n_train, n_test, molecule, lr)
+
+    else:
+        raise ValueError("Invalid Task or Dataset, could not train model")
+
+
+def validate(model, dataset, task, molecule, n_train, n_test):
+    if dataset == "QM9":
+        return validate_baseline(model, dataset, n_train, n_test)
+    elif dataset == "MD17" and task == Task.energy:
+        return validate_md17(model, molecule, n_train, n_test)
+    elif dataset == "MD17" and task == Task.force:
+        return validate_md17_energy_force(model, molecule, n_train, n_test)
+    elif dataset == "ISO17" and task == Task.energy:
+        return validate_baseline(model, dataset, n_train, n_test)
+    elif dataset == "ISO17" and task == Task.force:
+        return validate_baseline_force(model, dataset, n_train, n_test)
+
+
+def train_and_validate(
+        trainable: Trainable, model="baseline", n_train=10, n_test=10, lr=0.2, epochs=2
+):
+    print("Training...")
+    model, train_loss = train(
+        model=model,
+        dataset=trainable.dataset,
+        task=trainable.task,
+        molecule=trainable.molecule,
+        epochs=epochs,
+        n_train=n_train,
+        n_test=n_test,
+        lr=lr,
+    )
+    print("Training loss : ", train_loss)
+    test_loss = validate(
+        model,
+        trainable.dataset,
+        trainable.task,
+        n_train=n_train,
+        n_test=n_test,
+        molecule=trainable.molecule,
+    )
+    print("Test loss : ", test_loss)
+
+    return train_loss, test_loss
+
+
 def get_model(model, dataset, task, molecule="aspirin"):
     if model == Model.baseline:
         if dataset in [Dataset.qm9, Dataset.iso17]:
@@ -57,35 +124,9 @@ def get_model(model, dataset, task, molecule="aspirin"):
         raise ValueError("Not supported model", model)
 
 
-def train(
-    model, dataset, task, molecule=None, epochs=1, lr=0.01, n_train=100, n_test=100
-):
-    global device
-    if molecule is not None and dataset != "MD17":
-        raise ValueError("Molecule can only be specified for MD17 dataset")
-    model_obj = get_model(model, dataset, task, molecule)
-    model_obj = model_obj.to(device)
-    if model == Model.baseline and task == Task.force:
-        return model_obj, train_baseline_energy_force(
-            model_obj, n_train, n_test, lr, epochs, dataset
-        )
-    if model == Model.baseline and dataset != Dataset.md17:
-        return model_obj, train_baseline_energy(
-            model_obj, n_train, n_test, lr, epochs, dataset
-        )
-    elif dataset == Dataset.md17 and task == Task.energy:
-        return model_obj, train_md17(model_obj, n_train, n_test, molecule, lr)
-    elif dataset == Dataset.md17 and task == Task.force:
-        return model_obj, train_md17_energy_force(
-            model_obj, n_train, n_test, molecule, lr
-        )
-    else:
-        raise ValueError("Invalid Task or Dataset, could not train model")
-
-
 def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
     losses = []
     model.train()
     for epoch in tqdm(range(epochs)):
@@ -136,50 +177,9 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
     return losses
 
 
-def validate(model, dataset, task, molecule, n_train, n_test):
-    if dataset == "QM9":
-        return validate_baseline(model, dataset, n_train, n_test)
-    elif dataset == "MD17" and task == Task.energy:
-        return validate_md17(model, molecule, n_train, n_test)
-    elif dataset == "MD17" and task == Task.force:
-        return validate_md17_energy_force(model, molecule, n_train, n_test)
-    elif dataset == "ISO17" and task == Task.energy:
-        return validate_baseline(model, dataset, n_train, n_test)
-    elif dataset == "ISO17" and task == Task.force:
-        return validate_baseline_force(model, dataset, n_train, n_test)
-
-
-def train_and_validate(
-    trainable: Trainable, model="baseline", n_train=10, n_test=10, lr=0.2, epochs=2
-):
-    print("Training...")
-    model, train_loss = train(
-        model=model,
-        dataset=trainable.dataset,
-        task=trainable.task,
-        molecule=trainable.molecule,
-        epochs=epochs,
-        n_train=n_train,
-        n_test=n_test,
-        lr=lr,
-    )
-    print("Training loss : ", train_loss)
-    test_loss = validate(
-        model,
-        trainable.dataset,
-        trainable.task,
-        n_train=n_train,
-        n_test=n_test,
-        molecule=trainable.molecule,
-    )
-    print("Test loss : ", test_loss)
-
-    return train_loss, test_loss
-
-
 def validate_qm9(model, dataset, n_train, n_test):
     # Validation step
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
     train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
     model.eval()
     with torch.no_grad():
@@ -195,7 +195,7 @@ def validate_qm9(model, dataset, n_train, n_test):
 
 def validate_baseline(model, dataset, n_train, n_test):
     # Validation step
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
     train_gen, test_gen = load_data(dataset, n_train=n_train, n_test=n_test)
     model.eval()
     with torch.no_grad():
@@ -287,7 +287,7 @@ def train_md17(model, n_train, n_test, molecule, lr=0.01):
     model.train()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
 
     # Specific for Aspirin
     E_mu, E_std = (torch.tensor(-406737.276528638), torch.tensor(5.94684041516964))
@@ -324,7 +324,7 @@ def train_md17(model, n_train, n_test, molecule, lr=0.01):
     return losses[0]
 
 
-def validate_md17(model, molecule, n_train, n_test, criterion=nn.MSELoss()):
+def validate_md17(model, molecule, n_train, n_test, criterion=nn.L1Loss()):
     _, dataset_iterator = load_data(
         Dataset.md17,
         n_train=n_train,
