@@ -1,6 +1,8 @@
 import argparse
+import json
 import os
 import sys
+from datetime import datetime
 from pprint import pprint
 
 import torch
@@ -8,7 +10,7 @@ import torch
 
 sys.path.append(os.getcwd())
 
-from pml_schnet.baseline import train_and_validate
+from pml_schnet.route import train_and_validate
 from pml_schnet.settings import train_modes, Trainable
 
 parser = argparse.ArgumentParser(description="Train a model")
@@ -78,6 +80,12 @@ if args.train_mode:
                 continue
         print("Done!")
         pprint(results)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        filename = f"model_test_run_{timestamp}.json"
+        with open(filename, 'w') as file:
+            json.dump(results, file, indent=4)
+        print(f"Data dumped to {filename}")
 
 else:
     trainable = Trainable(dataset=args.dataset, task=args.task, molecule=args.molecule)
