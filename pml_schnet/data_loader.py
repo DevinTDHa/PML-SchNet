@@ -24,7 +24,7 @@ def data_to_dic(x, dataset):
             "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
             "R": x[properties.position].float(),  # atomic positions `R` is `_positions`
             "N": x[properties.n_atoms],  # Number of atoms
-            "F": x[force_label[dataset]].float(),
+            "F": x[force_label[dataset]],
         }
 
 

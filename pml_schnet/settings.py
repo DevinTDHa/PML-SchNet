@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Task:
     energy = "energy"

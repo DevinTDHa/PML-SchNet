@@ -81,3 +81,12 @@ def show(
         fig.savefig(outfile)
 
     return fig
+
+
+
+def plot_loss(losses):
+    return
+    fig = px.line(pd.DataFrame(losses), x="epoch", y="loss", title="Loss over epoch")
+    fig.show()
+
+
