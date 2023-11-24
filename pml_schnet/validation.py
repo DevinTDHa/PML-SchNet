@@ -51,7 +51,7 @@ def validate_baseline_force(model, dataset, n_train, n_test, molecule):
         loss = criterion(F_pred, target_F)
         val_loss.append(loss.item())
     mean_loss = torch.Tensor(val_loss).mean()
-    return mean_loss.numpy()
+    return float(mean_loss.numpy())
 
 
 def validate_baseline_energy_force(model, dataset, n_train, n_test, molecule):
