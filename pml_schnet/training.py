@@ -91,3 +91,19 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
         losses.append({"epoch": epoch, "loss": loss.item()})
     plot_loss(losses)
     return losses[-1]["loss"]
+
+
+
+def train_schnet_energy(
+        model_obj, n_train, n_test, lr, epochs, dataset
+) : pass
+
+
+def train_schnet_energy_force(
+        model_obj, n_train, n_test, lr, epochs, dataset
+) : pass
+
+
+def train_schnet_force(
+        model_obj, n_train, n_test, lr, epochs, dataset
+) : pass

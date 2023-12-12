@@ -4,6 +4,7 @@ import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class Task:
     energy = "energy"
     force = "force"
@@ -26,6 +27,9 @@ class Trainable:
     dataset: str
     task: str
     molecule: str = None
+
+    def __str__(self):
+        return f"{self.dataset}'_'{self.task}'_'{self.molecule}"
 
 
 valid_molecules = {

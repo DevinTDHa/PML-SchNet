@@ -1,3 +1,5 @@
+import torch
+
 from pml_schnet.model import BaselineModel
 from pml_schnet.settings import Model, Task, Trainable
 from pml_schnet.settings import device
@@ -9,9 +11,12 @@ from pml_schnet.training import (
 from pml_schnet.validation import (
     validate_baseline_energy,
     validate_baseline_force,
-    validate_baseline_energy_force,
+    validate_baseline_energy_force, validate_schnet_energy_force, validate_schnet_force, validate_schnet_energy,
 )
+
+
 # High level logic routing
+
 
 def train(
     model, dataset, task, molecule=None, epochs=1, lr=0.01, n_train=100, n_test=100
@@ -36,20 +41,51 @@ def train(
             return model_obj, train_baseline_energy(
                 model_obj, n_train, n_test, lr, epochs, dataset
             )
+    elif model == Model.schnet:
+        if task == Task.force:
+            return model_obj, train_schnet_force(
+                model_obj, n_train, n_test, lr, epochs, dataset
+            )
+
+        elif task == Task.energy_and_force:
+            return model_obj, train_schnet_energy_force(
+                model_obj, n_train, n_test, lr, epochs, dataset
+            )
+        elif task == Task.energy:
+            return model_obj, train_schnet_energy(
+                model_obj, n_train, n_test, lr, epochs, dataset
+            )
+
     raise ValueError("Invalid Task or Dataset, could not train model")
 
 
 def validate(model, dataset, task, molecule, n_train, n_test):
-    if task == Task.energy:
-        return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
-    elif task == Task.force:
-        return validate_baseline_force(model, dataset, n_train, n_test, molecule)
-    elif task == Task.energy_and_force:
-        return validate_baseline_energy_force(model, dataset, n_train, n_test, molecule)
+    if model == Model.baseline:
+        if task == Task.energy:
+            return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
+        elif task == Task.force:
+            return validate_baseline_force(model, dataset, n_train, n_test, molecule)
+        elif task == Task.energy_and_force:
+            return validate_baseline_energy_force(model, dataset, n_train, n_test, molecule)
+    elif model == Model.schnet:
+        if task == Task.energy:
+            return validate_schnet_energy(model, dataset, n_train, n_test, molecule)
+        elif task == Task.force:
+            return validate_schnet_force(model, dataset, n_train, n_test, molecule)
+        elif task == Task.energy_and_force:
+            return validate_schnet_energy_force(model, dataset, n_train, n_test, molecule)
+    else:
+        raise ValueError("Invalid Task or Dataset, could not validate model")
 
 
 def train_and_validate(
-    trainable: Trainable, model="baseline", n_train=10, n_test=10, lr=0.2, epochs=2
+    trainable: Trainable,
+    model="baseline",
+    n_train=10,
+    n_test=10,
+    lr=0.2,
+    epochs=2,
+    save_path=None,
 ):
     print("Training...")
     model, train_loss = train(
@@ -73,6 +109,9 @@ def train_and_validate(
     )
     print("Test loss : ", test_loss)
 
+    if save_path:
+        print("Saving model to", save_path)
+        torch.save(model, save_path)
     return train_loss, test_loss
 
 
