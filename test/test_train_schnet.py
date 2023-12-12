@@ -2,25 +2,27 @@ import numpy as np
 import pytest
 import schnetpack.properties as structure
 import torch
+from ase import Atoms
 from ase.neighborlist import neighbor_list
 
+from pml_schnet import layers
 from pml_schnet.model import SchnetNet
 from pml_schnet.route import train_and_validate
-from pml_schnet.settings import Dataset, Model
+from pml_schnet.settings import Model
 from pml_schnet.settings import (
     Trainable,
 )
-from ase import Atoms
+
 
 @pytest.fixture(scope="session")
 def num_data():
     return 20
 
+
 @pytest.fixture(scope="session")
 def example_data(num_data):
     data = []
     for i in range(1, num_data + 1):
-
         mol_1 = torch.normal(1.0, 0.01, size=(3, 3))
         z = np.random.randint(1, 100, size=(len(mol_1),))
         ats = Atoms(numbers=z, positions=mol_1.numpy(), cell=None, pbc=False)
@@ -110,8 +112,12 @@ def test_data_gen(indexed_data):
 
 # @pytest.mark.parametrize("trainable", iso17_trainable, ids=test_id)
 def test_train_iso17_energy_force(trainable: Trainable):
-
-    model = SchnetNet(n_atom_basis=128, n_interactions=3, radial_basis=, cutoff_fn=, max_z=100)
+    model = SchnetNet(
+        n_atom_basis=128,
+        n_interactions=3,
+        radial_basis=layers.GaussianRBF(n_rbf=20, cutoff=5.0),
+        max_z=100,
+    )
     train_loss, test_loss = train_and_validate(
         trainable, Model.schnet, n_train=200000, n_test=100
     )
