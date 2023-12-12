@@ -29,14 +29,12 @@ class BaselineModel(nn.Module):
 
 
 class SchnetNet(nn.Module):
-    def __init__(self, n_atom_basis, n_filters, radial_basis, cutoff_fn, max_z=100):
+    def __init__(self, n_atom_basis, n_interactions, radial_basis,  max_z=100):
         super().__init__()
         self.n_atom_basis = n_atom_basis
         self.size = (self.n_atom_basis,)
-        self.n_filters = n_filters or self.n_atom_basis
+        self.n_filters = n_interactions or self.n_atom_basis
         self.radial_basis = radial_basis
-        self.cutoff_fn = cutoff_fn
-        self.cutoff = cutoff_fn.cutoff
         """
         # Molecular representation NOTES
         # Basically  convert atomic positions and nuclear charges (R,Z) into feature vector X.
@@ -62,7 +60,7 @@ class SchnetNet(nn.Module):
         # TODO Interaction block implementation
 
         # 3) Atomwise 32. No Bias/Activation
-        self.atom_wise_32 = Dense(64, 32, bias=False, activation=None)
+        self.atom_wise_32 = nn.Linear(64, 32, bias=False)
         # 4) Shifted Softplus
         self.shifted_softplus = ShiftedSoftPlus()
 
