@@ -1,103 +1,109 @@
-from typing import Callable
-
 import torch
-from schnetpack.nn import Dense
-from torch import nn
+from torch import nn, Tensor
 
 from pml_schnet.activation import ShiftedSoftPlus
-class SchNetInteraction(nn.Module):
-    r"""SchNet interaction block for modeling interactions of atomistic systems."""
+from schnetpack.nn.scatter import scatter_add
+
+
+class RadialBasisFunctions(nn.Module):
+    def __init__(self, rbf_min: float, rbf_max: float, n_rbf: int, gamma=10):
+        """Bla bla
+
+        Parameters
+        ----------
+        rbf_min : float
+        rbf_max : float
+        n_rbf : int
+        gamma : int
+        """
+        super().__init__()
+
+        self.rbf_min = rbf_min
+        self.rbf_max = rbf_max
+        self.n_rbf = n_rbf
+        self.gamma = gamma
+        self.centers = torch.linspace(rbf_min, rbf_max, n_rbf).view(1, -1)
+
+    def forward(self, R_distances: Tensor):
+        diff = R_distances[..., None] - self.centers
+        return torch.exp(-self.gamma * torch.pow(diff, 2))
+
+
+class CfConv(nn.Module):
+    """Module for learning continuous convolutions between atoms."""
 
     def __init__(
-            self,
-            n_atom_basis: int,
-            n_rbf: int,
-            n_filters: int,
-            activation: Callable = ShiftedSoftPlus(),
+        self, atom_embeddings_dim: int, rbf_min: float, rbf_max: float, n_rbf: int
     ):
-        """
-        Args:
-            n_atom_basis: number of features to describe atomic environments.
-            n_rbf (int): number of radial basis functions.
-            n_filters: number of filters used in continuous-filter convolution.
-            activation: if None, no activation function is used.
-        """
-        super(SchNetInteraction, self).__init__()
-        self.in2f = Dense(n_atom_basis, n_filters, bias=False, activation=None)
-        self.f2out = nn.Sequential(
-            Dense(n_filters, n_atom_basis, activation=activation),
-            Dense(n_atom_basis, n_atom_basis, activation=None),
+        super().__init__()
+        self.rbf = RadialBasisFunctions(rbf_min, rbf_max, n_rbf)
+        self.w_layers = nn.Sequential(
+            nn.Linear(n_rbf, atom_embeddings_dim),
+            ShiftedSoftPlus(),
+            nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
+            ShiftedSoftPlus(),
         )
-        self.filter_network = nn.Sequential(
-            Dense(n_rbf, n_filters, activation=activation), Dense(n_filters, n_filters)
+
+    def forward(self, X: Tensor, R_distances: Tensor, idx_i: Tensor, idx_j: Tensor):
+        # Given:
+        # 1) R_distances[i][j] = ||r_i - r_j||
+
+        # 2) rbf, 300
+        radial_basis_distances = self.rbf(R_distances)
+
+        # 3) dense, 64
+        # 4) shifted softplus
+        # 5) dense, 64
+        # 6) shifted softplus
+        Wij = self.w_layers(radial_basis_distances)
+
+        # continuous-filter convolution output
+        # X * W
+        x_j = X[idx_j]
+        x_ij = x_j * Wij
+        return scatter_add(x_ij, idx_i, dim_size=X.shape[0])
+
+
+class SchNetInteraction(nn.Module):
+    """SchNet interaction block for modeling inter-atomic interactions."""
+
+    def __init__(
+        self, atom_embeddings_dim: int, rbf_min: float, rbf_max: float, n_rbf: int
+    ):
+        super().__init__(self)
+        self.in_atom_wise = nn.Linear(
+            atom_embeddings_dim,
+            atom_embeddings_dim
+            # bias=False,  # TODO: why?
+        )
+
+        self.cf_conv = CfConv(atom_embeddings_dim, rbf_min, rbf_max, n_rbf)
+
+        self.out_atom_wise = nn.Sequential(
+            nn.Linear(n_rbf, atom_embeddings_dim),
+            ShiftedSoftPlus(),
+            nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
         )
 
     def forward(
-            self,
-            x: torch.Tensor,
-            f_ij: torch.Tensor,
-            idx_i: torch.Tensor,
-            idx_j: torch.Tensor,
-            rcut_ij: torch.Tensor,
+        self,
+        X: torch.Tensor,
+        R_distances: torch.Tensor,
+        idx_i: torch.Tensor,
+        idx_j: torch.Tensor,
     ):
-        """Compute interaction output.
+        # 1) atom-wise, 64
+        X_in = self.in_atom_wise(X)
 
-        Args:
-            x: input values
-            Wij: filter
-            idx_i: index of center atom i
-            idx_j: index of neighbors j
+        # 2) cfconv, 64
+        X_conv = self.cf_conv(X_in, R_distances, idx_i, idx_j)
 
-        Returns:
-            atom features after interaction
-        """
-        x = self.in2f(x)
-        Wij = self.filter_network(f_ij)
-        Wij = Wij * rcut_ij[:, None]
+        # 3) atom-wise, 64
+        # 4) shifted softplus
+        # 5) atom-wise, 64
+        V = self.out_atom_wise(X_conv)
 
-        # continuous-filter convolution
-        x_j = x[idx_j]
-        x_ij = x_j * Wij
-        x = scatter_add(x_ij, idx_i, dim_size=x.shape[0])
+        # Output: Residual
+        X_residual = X + V
 
-        x = self.f2out(x)
-        return x
-
-
-def gaussian_rbf(inputs: torch.Tensor, offsets: torch.Tensor, widths: torch.Tensor, gamma=10):
-    diff = inputs[..., None] - offsets # ADD 1 DIM at end
-    y = torch.exp(gamma * torch.pow(diff, 2))
-    return y
-
-
-class GaussianRBF(nn.Module):
-    r"""Gaussian radial basis functions."""
-
-    def __init__(
-            self, n_rbf: int, cutoff: float, start: float = 0.0, trainable: bool = False
-    ):
-        """
-        Args:
-            n_rbf: total number of Gaussian functions, :math:`N_g`.
-            cutoff: center of last Gaussian function, :math:`\mu_{N_g}`
-            start: center of first Gaussian function, :math:`\mu_0`.
-            trainable: If True, widths and offset of Gaussian functions
-                are adjusted during training process.
-        """
-        super(GaussianRBF, self).__init__()
-        self.n_rbf = n_rbf
-
-        # compute offset and width of Gaussian functions
-        offset = torch.linspace(start, cutoff, n_rbf)
-        widths = torch.FloatTensor(
-            torch.abs(offset[1] - offset[0]) * torch.ones_like(offset)
-        )
-        if trainable:
-            self.widths = nn.Parameter(widths)
-            self.offsets = nn.Parameter(offset)
-        else:
-            self.register_buffer("widths", widths)
-            self.register_buffer("offsets", offset)
-
-    def forward(self, inputs: torch.Tensor):
-        return gaussian_rbf(inputs, self.offsets, self.widths)
+        return X_residual

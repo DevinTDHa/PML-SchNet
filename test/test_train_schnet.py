@@ -112,12 +112,8 @@ def test_data_gen(indexed_data):
 
 # @pytest.mark.parametrize("trainable", iso17_trainable, ids=test_id)
 def test_train_iso17_energy_force(trainable: Trainable):
-    model = SchnetNet(
-        n_atom_basis=128,
-        n_interactions=3,
-        radial_basis=layers.GaussianRBF(n_rbf=20, cutoff=5.0),
-        max_z=100,
-    )
+    # TODO: Fix inputs
+    model = SchnetNet(n_atom_basis=128, n_interactions=3, max_z=100)
     train_loss, test_loss = train_and_validate(
         trainable, Model.schnet, n_train=200000, n_test=100
     )
