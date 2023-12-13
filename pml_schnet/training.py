@@ -2,7 +2,6 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-import pml_schnet.route
 from pml_schnet.settings import device
 from pml_schnet.visualization.plotting import plot_loss
 from pml_schnet.data_loader import load_data
@@ -93,17 +92,13 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
     return losses[-1]["loss"]
 
 
-
-def train_schnet_energy(
-        model_obj, n_train, n_test, lr, epochs, dataset
-) : pass
+def train_schnet_energy(model_obj, n_train, n_test, lr, epochs, dataset):
+    pass
 
 
-def train_schnet_energy_force(
-        model_obj, n_train, n_test, lr, epochs, dataset
-) : pass
+def train_schnet_energy_force(model_obj, n_train, n_test, lr, epochs, dataset):
+    pass
 
 
-def train_schnet_force(
-        model_obj, n_train, n_test, lr, epochs, dataset
-) : pass
+def train_schnet_force(model_obj, n_train, n_test, lr, epochs, dataset):
+    pass

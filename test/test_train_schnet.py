@@ -1,15 +1,17 @@
 import numpy as np
 import pytest
-import schnetpack.properties as structure
 import torch
 from ase import Atoms
 from ase.neighborlist import neighbor_list
+from torch import nn
+from tqdm import tqdm
 
+from route import train_and_validate
+from data_loader import load_data
 from pml_schnet.model import SchnetNet
-from pml_schnet.route import train_and_validate
-from pml_schnet.settings import Model
 from pml_schnet.settings import (
     Trainable,
+    device,
 )
 
 
@@ -43,6 +45,7 @@ def indexed_data(example_data):
     # batch_size =5
     batch_size = len(example_data)
     Z = []
+    N = []
     R = []
     C = []
     # seg_m = []
@@ -71,6 +74,7 @@ def indexed_data(example_data):
         atoms = example_data[i]
         atoms.set_pbc(False)
         Z.append(atoms.numbers)
+        N.append(len(atoms.numbers))
         R.append(atoms.positions)
         C.append(atoms.cell)
         idx_i, idx_j, dij = neighbor_list("ijd", atoms, np.inf, self_interaction=False)
@@ -92,6 +96,7 @@ def indexed_data(example_data):
 
     inputs = {
         "Z": torch.tensor(Z),
+        "N": N,
         "R": torch.tensor(R),
         "idx_j": torch.tensor(ind_j),
         "idx_i": torch.tensor(ind_i),
@@ -110,11 +115,34 @@ def test_data_gen(indexed_data):
     print(indexed_data)
 
 
-def test_train_example(indexed_data):
+def test_inference(indexed_data):
     model = SchnetNet()
 
     res = model(indexed_data)
     print(res)
-    # train_loss, test_loss = train_and_validate(
-    #     trainable, Model.schnet, n_train=200000, n_test=100
-    # )
+
+
+def test_train_schnet():
+    model = SchnetNet().to(device)
+    lr = 0.1
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.L1Loss()
+    losses = []
+
+    epochs = 1
+    for epoch in tqdm(range(epochs)):
+        train_gen, test_gen = load_data("QM9", 100, 10, batch_size=2)
+        loss = None
+        for X_batch, y_batch in train_gen:
+            # Forward pass
+            pred = model(X_batch)
+            loss = criterion(pred, y_batch)
+            # Backward pass and optimization
+            optimizer.zero_grad()  # Clear gradients
+            loss.backward()  # Compute gradients
+            optimizer.step()  # Update weights
+        print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
+        losses.append({"epoch": epoch, "loss": loss.item()})
+    # plot_loss(losses)
+    return losses[-1]["loss"]

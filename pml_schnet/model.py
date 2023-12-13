@@ -59,10 +59,12 @@ class SchnetNet(nn.Module):
 
         self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
 
-        self.interactions = [
-            SchNetInteraction(atom_embedding_dim, rbf_min, rbf_max, n_rbf)
-            for _ in range(n_interactions)
-        ]
+        self.interactions = nn.ModuleList(
+            [
+                SchNetInteraction(atom_embedding_dim, rbf_min, rbf_max, n_rbf)
+                for _ in range(n_interactions)
+            ]
+        )
 
         self.output_layers = nn.Sequential(
             nn.Linear(atom_embedding_dim, 32, bias=False),  # TODO: why no bias?
@@ -70,13 +72,9 @@ class SchnetNet(nn.Module):
             nn.Linear(32, 1),
         )
 
-    @staticmethod
-    def sum_pooling(x):
-        """Sums up all potential atom energies into the predicted energy of the molecule."""
-        return x.sum(axis=1)
-
     def forward(self, inputs: Dict):
         Z = inputs["Z"]
+        N = inputs["N"]
         R_distances = inputs["d"]
         idx_i = inputs["idx_j"]
         idx_j = inputs["idx_j"]
@@ -96,9 +94,10 @@ class SchnetNet(nn.Module):
         # 7) atom-wise 1
         atom_outputs = self.output_layers(X_interacted)
 
-        # TODO: Assign Flattened Atoms Back to Molecules?
+        # Assign Flattened Atoms Back to Molecules
+        atom_partitions = torch.split(atom_outputs, N)
 
         # 8) Sum Pooling
-        predicted_energies = self.sum_pooling(atom_outputs)
+        predicted_energies = torch.stack([p.sum() for p in atom_partitions])
 
         return predicted_energies

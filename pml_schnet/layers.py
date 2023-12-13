@@ -4,6 +4,8 @@ from torch import nn, Tensor
 from pml_schnet.activation import ShiftedSoftPlus
 from schnetpack.nn.scatter import scatter_add
 
+from settings import device
+
 
 class RadialBasisFunctions(nn.Module):
     def __init__(self, rbf_min: float, rbf_max: float, n_rbf: int, gamma=10):
@@ -22,7 +24,7 @@ class RadialBasisFunctions(nn.Module):
         self.rbf_max = rbf_max
         self.n_rbf = n_rbf
         self.gamma = gamma
-        self.centers = torch.linspace(rbf_min, rbf_max, n_rbf).view(1, -1)
+        self.centers = torch.linspace(rbf_min, rbf_max, n_rbf).view(1, -1).to(device)
 
     def forward(self, R_distances: Tensor):
         diff = R_distances[..., None] - self.centers
