@@ -1,8 +1,8 @@
 import torch
 from torch import nn, Tensor
 
-from pml_schnet.activation import ShiftedSoftPlus
 from schnetpack.nn.scatter import scatter_add
+
 
 from settings import device
 
@@ -35,15 +35,20 @@ class CfConv(nn.Module):
     """Module for learning continuous convolutions between atoms."""
 
     def __init__(
-        self, atom_embeddings_dim: int, rbf_min: float, rbf_max: float, n_rbf: int
+        self,
+        atom_embeddings_dim: int,
+        rbf_min: float,
+        rbf_max: float,
+        n_rbf: int,
+        activation: nn.Module,
     ):
         super().__init__()
         self.rbf = RadialBasisFunctions(rbf_min, rbf_max, n_rbf)
         self.w_layers = nn.Sequential(
             nn.Linear(n_rbf, atom_embeddings_dim),
-            ShiftedSoftPlus(),
+            activation(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
-            ShiftedSoftPlus(),
+            activation(),
         )
 
     def forward(self, X: Tensor, R_distances: Tensor, idx_i: Tensor, idx_j: Tensor):
@@ -70,7 +75,12 @@ class SchNetInteraction(nn.Module):
     """SchNet interaction block for modeling inter-atomic interactions."""
 
     def __init__(
-        self, atom_embeddings_dim: int, rbf_min: float, rbf_max: float, n_rbf: int
+        self,
+        atom_embeddings_dim: int,
+        rbf_min: float,
+        rbf_max: float,
+        n_rbf: int,
+        activation: nn.Module,
     ):
         super().__init__()
         self.in_atom_wise = nn.Linear(
@@ -79,11 +89,11 @@ class SchNetInteraction(nn.Module):
             # bias=False,  # TODO: why?
         )
 
-        self.cf_conv = CfConv(atom_embeddings_dim, rbf_min, rbf_max, n_rbf)
+        self.cf_conv = CfConv(atom_embeddings_dim, rbf_min, rbf_max, n_rbf, activation)
 
         self.out_atom_wise = nn.Sequential(
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
-            ShiftedSoftPlus(),
+            activation(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
         )
 

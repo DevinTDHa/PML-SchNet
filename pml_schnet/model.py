@@ -39,6 +39,7 @@ class SchnetNet(nn.Module):
         rbf_min=0.0,
         rbf_max=30.0,
         n_rbf=300,
+        activation: nn.Module = ShiftedSoftPlus,
     ):
         """
         # Molecular representation NOTES
@@ -61,14 +62,16 @@ class SchnetNet(nn.Module):
 
         self.interactions = nn.ModuleList(
             [
-                SchNetInteraction(atom_embedding_dim, rbf_min, rbf_max, n_rbf)
+                SchNetInteraction(
+                    atom_embedding_dim, rbf_min, rbf_max, n_rbf, activation
+                )
                 for _ in range(n_interactions)
             ]
         )
 
         self.output_layers = nn.Sequential(
             nn.Linear(atom_embedding_dim, 32, bias=False),  # TODO: why no bias?
-            ShiftedSoftPlus(),
+            activation(),
             nn.Linear(32, 1),
         )
 

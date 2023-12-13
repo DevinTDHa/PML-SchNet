@@ -3,10 +3,10 @@ import pytest
 import torch
 from ase import Atoms
 from ase.neighborlist import neighbor_list
-from torch import nn
+from torch import nn, autograd
+from torch.nn import ELU
 from tqdm import tqdm
 
-from route import train_and_validate
 from data_loader import load_data
 from pml_schnet.model import SchnetNet
 from pml_schnet.settings import (
@@ -116,33 +116,33 @@ def test_data_gen(indexed_data):
 
 
 def test_inference(indexed_data):
-    model = SchnetNet()
+    model = SchnetNet(activation=ELU)
 
     res = model(indexed_data)
     print(res)
 
 
 def test_train_schnet():
-    model = SchnetNet().to(device)
+    model = SchnetNet(activation=ELU).to(device)
     lr = 0.1
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.L1Loss()
     losses = []
 
-    epochs = 1
-    for epoch in tqdm(range(epochs)):
-        train_gen, test_gen = load_data("QM9", 100, 10, batch_size=2)
-        loss = None
-        for X_batch, y_batch in train_gen:
-            # Forward pass
-            pred = model(X_batch)
-            loss = criterion(pred, y_batch)
-            # Backward pass and optimization
-            optimizer.zero_grad()  # Clear gradients
-            loss.backward()  # Compute gradients
-            optimizer.step()  # Update weights
-        print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-        losses.append({"epoch": epoch, "loss": loss.item()})
-    # plot_loss(losses)
+    epochs = 5
+    with autograd.detect_anomaly():
+        for epoch in tqdm(range(epochs)):
+            train_gen, test_gen = load_data("QM9", 10000, 10, batch_size=128)
+            loss = None
+            for X_batch, y_batch in train_gen:
+                # Forward pass
+                pred = model(X_batch)
+                loss = criterion(pred, y_batch)
+                # Backward pass and optimization
+                optimizer.zero_grad()  # Clear gradients
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+            print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
+            losses.append({"epoch": epoch, "loss": loss.item()})
     return losses[-1]["loss"]
