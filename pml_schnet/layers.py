@@ -70,7 +70,7 @@ class SchNetInteraction(nn.Module):
     def __init__(
         self, atom_embeddings_dim: int, rbf_min: float, rbf_max: float, n_rbf: int
     ):
-        super().__init__(self)
+        super().__init__()
         self.in_atom_wise = nn.Linear(
             atom_embeddings_dim,
             atom_embeddings_dim
@@ -80,7 +80,7 @@ class SchNetInteraction(nn.Module):
         self.cf_conv = CfConv(atom_embeddings_dim, rbf_min, rbf_max, n_rbf)
 
         self.out_atom_wise = nn.Sequential(
-            nn.Linear(n_rbf, atom_embeddings_dim),
+            nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
             ShiftedSoftPlus(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
         )

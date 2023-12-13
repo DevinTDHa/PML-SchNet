@@ -33,8 +33,8 @@ class BaselineModel(nn.Module):
 class SchnetNet(nn.Module):
     def __init__(
         self,
-        atom_embedding_dim,
-        n_interactions,
+        atom_embedding_dim=64,
+        n_interactions=3,
         max_z=100,
         rbf_min=0.0,
         rbf_max=30.0,
@@ -59,12 +59,10 @@ class SchnetNet(nn.Module):
 
         self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
 
-        self.interaction = nn.Sequential(
-            *[
-                SchNetInteraction(atom_embedding_dim, rbf_min, rbf_max, n_rbf)
-                for _ in range(n_interactions)
-            ]
-        )
+        self.interactions = [
+            SchNetInteraction(atom_embedding_dim, rbf_min, rbf_max, n_rbf)
+            for _ in range(n_interactions)
+        ]
 
         self.output_layers = nn.Sequential(
             nn.Linear(atom_embedding_dim, 32, bias=False),  # TODO: why no bias?
@@ -89,12 +87,16 @@ class SchnetNet(nn.Module):
         # 2) Interaction 64
         # 3) Interaction 64
         # 4) Interaction 64
-        interactions = self.interaction(X, R_distances, idx_i, idx_j)
+        X_interacted = X
+        for interaction in self.interactions:
+            X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)
 
         # 5) atom-wise 32
         # 6) Shifted Softplus
         # 7) atom-wise 1
-        atom_outputs = self.output_layers(interactions)
+        atom_outputs = self.output_layers(X_interacted)
+
+        # TODO: Assign Flattened Atoms Back to Molecules?
 
         # 8) Sum Pooling
         predicted_energies = self.sum_pooling(atom_outputs)
