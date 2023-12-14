@@ -1,28 +1,22 @@
 import torch
 from torch import Tensor
 from torch import nn
-from torch.nn import ReLU
+from torch.nn import Softplus, ReLU
 
 
 class ShiftedSoftPlus(nn.Module):
-    """Shifted Softplus version, that reverts to linear growth after a certain threshold for numerical stability.
+    """Shifted Softplus version, that reverts to linear growth after a certain threshold for numerical stability."""
 
-    Seems like this one doesn't work that well either, as some terms of the gradients explode and cause
-    numerical unstability.
-    """
-
-    def __init__(self, threshold=20.0):
+    def __init__(self):
         super().__init__()
-        self.threshold: Tensor = torch.tensor(threshold)
+        self.log_one_half = torch.log(torch.tensor(0.5))
+        self.softplus = Softplus()
 
     def forward(self, x: Tensor):
-        apply_threshold = x.ge(self.threshold)
-        ssp = torch.log(0.5 * torch.exp(x) + 0.5)
-        result = torch.where(apply_threshold, x, ssp)
-        return result
+        return self.log_one_half + self.softplus(x)
 
 
-class ShiftedSoftPlusOld(nn.Module):
+class ShiftedSoftPlusLSE(nn.Module):
     """Numerically Stable shfited softplus, Using Log Sum Exp Trick.
 
     But I guess not numerically stable enough...

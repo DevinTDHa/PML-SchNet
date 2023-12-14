@@ -4,11 +4,10 @@ import torch
 from ase import Atoms
 from ase.neighborlist import neighbor_list
 from torch import nn, autograd
-from torch.nn import ELU
 from tqdm import tqdm
 
 from pml_schnet.data_loader import load_data
-from pml_schnet.loss import energy_force_loss
+from pml_schnet.loss import energy_force_loss, derive_force
 from pml_schnet.model import SchnetNet
 from pml_schnet.settings import (
     Trainable,
@@ -117,14 +116,14 @@ def test_data_gen(indexed_data):
 
 
 def test_inference_dummy_data(indexed_data):
-    model = SchnetNet(activation=ELU)
+    model = SchnetNet()
 
     res = model(indexed_data)
     print(res)
 
 
 def test_train_schnet_energy():
-    model = SchnetNet(activation=ELU).to(device)
+    model = SchnetNet().to(device)
     lr = 0.1
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -133,46 +132,93 @@ def test_train_schnet_energy():
 
     epochs = 5
     with autograd.detect_anomaly():
-        for epoch in tqdm(range(epochs)):
-            train_gen, test_gen = load_data("QM9", 10000, 10, batch_size=128)
-            loss = None
-            for X_batch, y_batch in train_gen:
-                # Forward pass
-                pred = model(X_batch)
-                loss = criterion(pred, y_batch)
-                # Backward pass and optimization
-                optimizer.zero_grad()  # Clear gradients
-                loss.backward()  # Compute gradients
-                optimizer.step()  # Update weights
-            print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-            losses.append({"epoch": epoch, "loss": loss.item()})
-    return losses[-1]["loss"]
+        with tqdm(total=epochs, ncols=80) as progress_bar:
+            for epoch in range(epochs):
+                train_gen, test_gen = load_data("QM9", 10000, 10, batch_size=128)
+                loss = None
+                for X_batch, y_batch in train_gen:
+                    # Forward pass
+                    pred = model(X_batch)
+                    loss = criterion(pred, y_batch)
+                    # Backward pass and optimization
+                    optimizer.zero_grad()  # Clear gradients
+                    loss.backward()  # Compute gradients
+                    optimizer.step()  # Update weights
+
+                progress_bar.set_description("Schnet E")
+                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+                progress_bar.update(1)
+                losses.append(loss.item())
+
+    print(losses)
 
 
 def test_train_schnet_force_and_energy():
-    model = SchnetNet(activation=ELU).to(device)
+    model = SchnetNet().to(device)
     lr = 0.1
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     losses = []
 
-    epochs = 5
+    epochs = 10
     with autograd.detect_anomaly():
-        for epoch in tqdm(range(epochs)):
-            train_gen, test_gen = load_data("MD17", 5, 3, batch_size=2)
-            loss = None
-            for X_batch, y_batch in train_gen:
-                # Forward pass
-                X_batch["R"].requires_grad_()
-                F = X_batch["F"].to(device)
+        with tqdm(total=epochs, ncols=80) as progress_bar:
+            for epoch in range(epochs):
+                train_gen, test_gen = load_data("MD17", 12800, 1280, batch_size=128)
+                loss = None
+                for X_batch, y_batch in train_gen:
+                    # Forward pass
+                    X_batch["R"].requires_grad_()
+                    F = X_batch["F"].to(device)
 
-                # Forward pass
-                E_pred = model(X_batch)
-                loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
-                # Backward pass and optimization
-                optimizer.zero_grad()  # Clear gradients
-                loss.backward()  # Compute gradients
-                optimizer.step()  # Update weights
-            print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-            losses.append({"epoch": epoch, "loss": loss.item()})
-    return losses[-1]["loss"]
+                    # Forward pass
+                    E_pred = model(X_batch)
+                    loss = energy_force_loss(
+                        E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F
+                    )
+                    # Backward pass and optimization
+                    optimizer.zero_grad()  # Clear gradients
+                    loss.backward()  # Compute gradients
+                    optimizer.step()  # Update weights
+
+                progress_bar.set_description("Schnet E+F")
+                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+                progress_bar.update(1)
+                losses.append(loss.item())
+    print(losses)
+
+
+def test_train_schnet_force():
+    model = SchnetNet().to(device)
+    lr = 0.1
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    losses = []
+
+    criterion = nn.L1Loss()
+
+    epochs = 10
+    with autograd.detect_anomaly():
+        with tqdm(total=epochs, ncols=80) as progress_bar:
+            for epoch in range(epochs):
+                train_gen, test_gen = load_data("MD17", 12800, 1280, batch_size=32)
+                loss = None
+                for X_batch, y_batch in train_gen:
+                    # Forward pass
+                    X_batch["R"].requires_grad_()
+                    E_pred = model(X_batch)
+                    F_pred = derive_force(E_pred, X_batch["R"])
+                    F_pred.requires_grad_()
+
+                    target_F = X_batch["F"].to(device)
+                    loss = criterion(F_pred, target_F)
+                    # Backward pass and optimization
+                    optimizer.zero_grad()  # Clear gradients
+                    loss.backward()  # Compute gradients
+                    optimizer.step()  # Update weights
+
+                progress_bar.set_description("Schnet F")
+                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+                progress_bar.update(1)
+                losses.append(loss.item())
+    print(losses)

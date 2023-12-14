@@ -1,24 +1,27 @@
 from typing import Dict
 
 import torch
-
-
 from torch import nn
 
-from .layers import SchNetInteraction
 from pml_schnet.activation import ShiftedSoftPlus
+from .layers import SchNetInteraction
+
+
 class PairwiseDistances(nn.Module):
     """
     Compute pair-wise distances from indices provided by a neighbor list transform.
     """
 
-    def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        R = inputs['R']
-        offsets = inputs['_offsets']
-        idx_i = inputs['idx_i']
-        idx_j = inputs['idx_j']
+    def __init__(self):
+        super().__init__()
 
-        Rij = R[idx_j] - R[idx_i]  #+ offsets # TODO?
+    @staticmethod
+    def forward(inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+        R = inputs["R"]
+        idx_i = inputs["idx_i"]
+        idx_j = inputs["idx_j"]
+
+        Rij = R[idx_j] - R[idx_i]  # + offsets # TODO?
         d_ij = torch.norm(Rij, dim=-1)
         # inputs[properties.Rij] = Rij
         return d_ij
@@ -87,22 +90,23 @@ class SchnetNet(nn.Module):
         )
 
         self.output_layers = nn.Sequential(
-            nn.Linear(atom_embedding_dim, 32, bias=False),  # TODO: why no bias?
+            nn.Linear(atom_embedding_dim, 32),  # , bias=False),  # TODO: why no bias?
             activation(),
             nn.Linear(32, 1),
         )
         self.pairwise = PairwiseDistances()
-    def forward(self, inputs: Dict):
-        Z = inputs["Z"] # Atomic numbers. Label
 
-        N = inputs["N"] # Number of atoms in each molecule
+    def forward(self, inputs: Dict):
+        Z = inputs["Z"]  # Atomic numbers. Label
+
+        N = inputs["N"]  # Number of atoms in each molecule
         # AKA R_ij/  vectors pointing from center atoms to neighboring atoms
         # R_distances = inputs["d"]
 
         R_distances = self.pairwise(inputs)
 
-        idx_i = inputs["idx_i"] # indices of center atoms
-        idx_j = inputs["idx_j"] # indices of neighboring atoms
+        idx_i = inputs["idx_i"]  # indices of center atoms
+        idx_j = inputs["idx_j"]  # indices of neighboring atoms
 
         # 1) Embedding 64 ( see section Molecular representation).
         X = self.embedding(Z)

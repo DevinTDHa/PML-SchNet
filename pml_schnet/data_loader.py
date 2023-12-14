@@ -1,12 +1,9 @@
 import os
 
 import numpy as np
-import torch
-from ase import Atoms
-from ase.neighborlist import neighbor_list
 from schnetpack import properties
 from schnetpack.datasets import ISO17, QM9, MD17
-from schnetpack.transform import NeighborListTransform
+from schnetpack.transform import ASENeighborList
 
 from pml_schnet import settings
 from pml_schnet.data_utils import fix_iso_17_db
@@ -23,10 +20,8 @@ def data_to_dic(x, dataset):
         .to(device)
         .float(),  # atomic positions `R` is `_positions`
         "N": x[properties.n_atoms].tolist(),  # Number of atoms
-        "d": x[properties.offsets].float().to(device),  # Atom distances
         "idx_i": x[properties.idx_i].to(device),  # Index of first atom for distance
         "idx_j": x[properties.idx_j].to(device),  # Index of second atom for distance
-        "_offsets": x[properties.offsets].to(device),  # Index of second atom for distance
     }
     if dataset != "QM9":
         inputs["F"] = x[force_label[dataset]].to(device)
@@ -39,33 +34,15 @@ def get_generator(base_gen, dataset):
         yield data_to_dic(x, dataset), x[energy_label[dataset]].float().to(device)
 
 
-class PositionDistances(NeighborListTransform):
-    """
-    Calculate neighbor list using ASE.
-    """
-
-    def __init__(self):
-        super().__init__(np.inf)
-
-    def _build_neighbor_list(self, Z, positions, cell, pbc, cutoff):
-        at = Atoms(numbers=Z, positions=positions, cell=cell, pbc=pbc)
-
-        idx_i, idx_j, d_ij = neighbor_list("ijd", at, cutoff, self_interaction=False)
-        idx_i = torch.from_numpy(idx_i)
-        idx_j = torch.from_numpy(idx_j)
-        d = torch.from_numpy(d_ij)
-        return idx_i, idx_j, d
-
-
 def load_data(
-        dataset="QM9",
-        n_train=1000,
-        n_test=100,
-        batch_size=32,
-        molecule="aspirin",
-        log=False,
-        iso17_fold="reference",
-        cache_dir=settings.cache_dir,
+    dataset="QM9",
+    n_train=1000,
+    n_test=100,
+    batch_size=32,
+    molecule="aspirin",
+    log=False,
+    iso17_fold="reference",
+    cache_dir=settings.cache_dir,
 ):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
@@ -77,7 +54,7 @@ def load_data(
             num_train=n_train,
             num_test=0,
             num_val=n_test,
-            transforms=[PositionDistances()],
+            transforms=[ASENeighborList(np.inf)],
             split_file=None,
         )
     elif dataset == "MD17":
@@ -95,7 +72,7 @@ def load_data(
             num_train=n_train,
             num_test=0,
             num_val=n_test,
-            transforms=[PositionDistances()],
+            transforms=[ASENeighborList(np.inf)],
             split_file=None,
         )
     elif dataset == "ISO17":
@@ -108,7 +85,7 @@ def load_data(
             num_train=n_train,
             num_test=0,
             num_val=n_test,
-            transforms=[PositionDistances()],
+            transforms=[ASENeighborList(np.inf)],
             split_file=None,
         )
     else:
