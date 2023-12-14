@@ -7,8 +7,8 @@ from torch import nn, autograd
 from torch.nn import ELU
 from tqdm import tqdm
 
-from data_loader import load_data
-from loss import energy_force_loss
+from pml_schnet.data_loader import load_data
+from pml_schnet.loss import energy_force_loss
 from pml_schnet.model import SchnetNet
 from pml_schnet.settings import (
     Trainable,
@@ -116,14 +116,14 @@ def test_data_gen(indexed_data):
     print(indexed_data)
 
 
-def test_inference(indexed_data):
+def test_inference_dummy_data(indexed_data):
     model = SchnetNet(activation=ELU)
 
     res = model(indexed_data)
     print(res)
 
 
-def test_train_schnet():
+def test_train_schnet_energy():
     model = SchnetNet(activation=ELU).to(device)
     lr = 0.1
 
@@ -149,7 +149,7 @@ def test_train_schnet():
     return losses[-1]["loss"]
 
 
-def test_train_schnet_force():
+def test_train_schnet_force_and_energy():
     model = SchnetNet(activation=ELU).to(device)
     lr = 0.1
 
@@ -159,7 +159,7 @@ def test_train_schnet_force():
     epochs = 5
     with autograd.detect_anomaly():
         for epoch in tqdm(range(epochs)):
-            train_gen, test_gen = load_data("MD17", 10000, 10, batch_size=128)
+            train_gen, test_gen = load_data("MD17", 5, 3, batch_size=2)
             loss = None
             for X_batch, y_batch in train_gen:
                 # Forward pass

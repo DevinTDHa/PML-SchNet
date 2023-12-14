@@ -26,6 +26,7 @@ def data_to_dic(x, dataset):
         "d": x[properties.offsets].float().to(device),  # Atom distances
         "idx_i": x[properties.idx_i].to(device),  # Index of first atom for distance
         "idx_j": x[properties.idx_j].to(device),  # Index of second atom for distance
+        "_offsets": x[properties.offsets].to(device),  # Index of second atom for distance
     }
     if dataset != "QM9":
         inputs["F"] = x[force_label[dataset]].to(device)
@@ -57,14 +58,14 @@ class PositionDistances(NeighborListTransform):
 
 
 def load_data(
-    dataset="QM9",
-    n_train=1000,
-    n_test=100,
-    batch_size=32,
-    molecule="aspirin",
-    log=False,
-    iso17_fold="reference",
-    cache_dir=settings.cache_dir,
+        dataset="QM9",
+        n_train=1000,
+        n_test=100,
+        batch_size=32,
+        molecule="aspirin",
+        log=False,
+        iso17_fold="reference",
+        cache_dir=settings.cache_dir,
 ):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)

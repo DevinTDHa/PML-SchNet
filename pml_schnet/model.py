@@ -1,10 +1,27 @@
 from typing import Dict
 
 import torch
+
+
 from torch import nn
 
-from layers import SchNetInteraction
+from .layers import SchNetInteraction
 from pml_schnet.activation import ShiftedSoftPlus
+class PairwiseDistances(nn.Module):
+    """
+    Compute pair-wise distances from indices provided by a neighbor list transform.
+    """
+
+    def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        R = inputs['R']
+        offsets = inputs['_offsets']
+        idx_i = inputs['idx_i']
+        idx_j = inputs['idx_j']
+
+        Rij = R[idx_j] - R[idx_i]  #+ offsets # TODO?
+        d_ij = torch.norm(Rij, dim=-1)
+        # inputs[properties.Rij] = Rij
+        return d_ij
 
 
 class BaselineModel(nn.Module):
@@ -74,20 +91,23 @@ class SchnetNet(nn.Module):
             activation(),
             nn.Linear(32, 1),
         )
-
+        self.pairwise = PairwiseDistances()
     def forward(self, inputs: Dict):
-        Z = inputs["Z"]
-        N = inputs["N"]
-        R_distances = inputs["d"]
-        idx_i = inputs["idx_j"]
-        idx_j = inputs["idx_j"]
+        Z = inputs["Z"] # Atomic numbers. Label
+
+        N = inputs["N"] # Number of atoms in each molecule
+        # AKA R_ij/  vectors pointing from center atoms to neighboring atoms
+        # R_distances = inputs["d"]
+
+        R_distances = self.pairwise(inputs)
+
+        idx_i = inputs["idx_i"] # indices of center atoms
+        idx_j = inputs["idx_j"] # indices of neighboring atoms
 
         # 1) Embedding 64 ( see section Molecular representation).
         X = self.embedding(Z)
 
-        # 2) Interaction 64
-        # 3) Interaction 64
-        # 4) Interaction 64
+        # 2),3),4) each Interaction 64 with recurrent layers
         X_interacted = X
         for interaction in self.interactions:
             X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)

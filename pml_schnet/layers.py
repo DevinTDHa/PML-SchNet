@@ -4,7 +4,7 @@ from torch import nn, Tensor
 from schnetpack.nn.scatter import scatter_add
 
 
-from settings import device
+from .settings import device
 
 
 class RadialBasisFunctions(nn.Module):
