@@ -9,10 +9,13 @@ def derive_force(E_pred, R):
 
 def energy_force_loss(E_pred, R, E, F):
     rho = 0.01
-    dist_E = rho * (E - E_pred).abs() ** 2
+    dist_E = rho * (E - E_pred) ** 2
+    batch_size = len(E_pred)
 
     dEdR = -derive_force(E_pred, R)
     dEdR.requires_grad_()
 
-    dist_F = (torch.norm((F.view(-1, 3) - dEdR.view(-1, 3)), dim=1) ** 2).mean()
-    return (dist_E + dist_F).mean()
+    diff_F = F.view(batch_size, -1, 3) - dEdR.view(batch_size, -1, 3)
+    dist_F = torch.norm(diff_F, dim=-1)
+    dist_F_mean = (dist_F**2).mean(axis=1)
+    return (dist_E + dist_F_mean).mean()

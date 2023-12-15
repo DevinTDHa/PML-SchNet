@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from pml_schnet.activation import ShiftedSoftPlus
-from .layers import SchNetInteraction
+from pml_schnet.layers import SchNetInteraction
 
 
 class PairwiseDistances(nn.Module):
@@ -23,7 +23,7 @@ class PairwiseDistances(nn.Module):
 
         Rij = R[idx_j] - R[idx_i]  # + offsets # TODO?
         d_ij = torch.norm(Rij, dim=-1)
-        # inputs[properties.Rij] = Rij
+
         return d_ij
 
 
