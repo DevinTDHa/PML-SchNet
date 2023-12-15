@@ -2,8 +2,12 @@ import torch
 
 
 def derive_force(E_pred, R):
-    return torch.autograd.grad(
-        E_pred, R, grad_outputs=torch.ones_like(E_pred), retain_graph=True
+    return -torch.autograd.grad(
+        E_pred,
+        R,
+        grad_outputs=torch.ones_like(E_pred),
+        retain_graph=True,
+        create_graph=True,
     )[0]
 
 
@@ -12,7 +16,7 @@ def energy_force_loss(E_pred, R, E, F):
     dist_E = rho * (E - E_pred) ** 2
     batch_size = len(E_pred)
 
-    dEdR = -derive_force(E_pred, R)
+    dEdR = derive_force(E_pred, R)
     dEdR.requires_grad_()
 
     diff_F = F.view(batch_size, -1, 3) - dEdR.view(batch_size, -1, 3)

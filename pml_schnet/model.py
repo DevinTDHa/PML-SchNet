@@ -21,7 +21,7 @@ class PairwiseDistances(nn.Module):
         idx_i = inputs["idx_i"]
         idx_j = inputs["idx_j"]
 
-        Rij = R[idx_j] - R[idx_i]  # + offsets # TODO?
+        Rij = R[idx_i] - R[idx_j]
         d_ij = torch.norm(Rij, dim=-1)
 
         return d_ij
@@ -50,7 +50,7 @@ class BaselineModel(nn.Module):
         return batch_means
 
 
-class SchnetNet(nn.Module):
+class SchNet(nn.Module):
     def __init__(
         self,
         atom_embedding_dim=64,
