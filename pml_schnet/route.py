@@ -81,8 +81,8 @@ def train(
     raise ValueError("Invalid Task or Dataset, could not train model")
 
 
-def validate(model, dataset, task, molecule, n_train, n_test):
-    if model == Model.baseline:
+def validate(model,model_type, dataset, task, molecule, n_train, n_test):
+    if model_type == Model.baseline:
         if task == Task.energy:
             return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
         elif task == Task.force:
@@ -91,7 +91,7 @@ def validate(model, dataset, task, molecule, n_train, n_test):
             return validate_baseline_energy_force(
                 model, dataset, n_train, n_test, molecule
             )
-    elif model == Model.schnet:
+    elif model_type == Model.schnet:
         train_gen, test_gen = load_data(
             dataset, n_train=n_train, n_test=n_test, molecule=molecule
         )
@@ -103,6 +103,7 @@ def validate(model, dataset, task, molecule, n_train, n_test):
         elif task == Task.energy_and_force:
             return validate_schnet_force_energy(model, test_gen)
     else:
+        print()
         raise ValueError(
             f"Invalid Task or Dataset, could not validate model "
             f"for {dataset, task, molecule, n_train, n_test}")
@@ -120,6 +121,7 @@ def train_and_validate(
         writer=None,
 ):
     print("Training...")
+    model_type = model
     model, train_loss = train(
         model=model,
         dataset=trainable.dataset,
@@ -135,6 +137,7 @@ def train_and_validate(
     print("Training loss : ", train_loss)
     test_loss = validate(
         model,
+        model_type,
         trainable.dataset,
         trainable.task,
         n_train=n_train,
