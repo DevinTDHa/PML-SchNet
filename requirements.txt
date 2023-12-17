@@ -12,3 +12,5 @@ matplotlib
 --extra-index-url https://download.pytorch.org/whl/cu118
 torchvision
 lightning
+caffe2
+tensorboard
