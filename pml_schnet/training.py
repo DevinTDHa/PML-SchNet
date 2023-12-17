@@ -170,7 +170,7 @@ def train_schnet_energy(model_obj, n_train, n_test, lr, epochs, dataset, batch_s
             )
     X_batch["N"] = torch.tensor(X_batch["N"])
     writer.add_graph(model_obj, (X_batch))
-
+    return losses[-1]["loss"]
 
 def train_schnet_energy_force(
     model_obj, n_train, n_test, lr, epochs, dataset, batch_size

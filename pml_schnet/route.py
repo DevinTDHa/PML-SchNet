@@ -26,16 +26,16 @@ from pml_schnet.validation import (
 
 
 def train(
-        model,
-        dataset,
-        task,
-        molecule=None,
-        epochs=1,
-        lr=0.01,
-        n_train=100,
-        n_test=100,
-        batch_size=32,
-        writer=None,
+    model,
+    dataset,
+    task,
+    molecule=None,
+    epochs=1,
+    lr=0.01,
+    n_train=100,
+    n_test=100,
+    batch_size=32,
+    writer=None,
 ):
     # generic train router for all models
     if molecule is not None and dataset != "MD17":
@@ -58,13 +58,14 @@ def train(
                 model_obj, n_train, n_test, lr, epochs, dataset
             )
     elif model == Model.schnet:
+        #TODO train_schnet_force or train_schnet_energy enough?
         if task == Task.force:
-            return model_obj, train_schnet_force(
+            return model_obj, train_schnet_energy(
                 model_obj, n_train, n_test, lr, epochs, dataset, batch_size
             )
 
         elif task == Task.energy_and_force:
-            return model_obj, train_schnet_energy_force(
+            return model_obj, train_schnet_energy(
                 model_obj, n_train, n_test, lr, epochs, dataset, batch_size
             )
         elif task == Task.energy:
@@ -81,7 +82,7 @@ def train(
     raise ValueError("Invalid Task or Dataset, could not train model")
 
 
-def validate(model,model_type, dataset, task, molecule, n_train, n_test):
+def validate(model, model_type, dataset, task, molecule, n_train, n_test):
     if model_type == Model.baseline:
         if task == Task.energy:
             return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
@@ -106,19 +107,20 @@ def validate(model,model_type, dataset, task, molecule, n_train, n_test):
         print()
         raise ValueError(
             f"Invalid Task or Dataset, could not validate model "
-            f"for {dataset, task, molecule, n_train, n_test}")
+            f"for {dataset, task, molecule, n_train, n_test}"
+        )
 
 
 def train_and_validate(
-        trainable: Trainable,
-        model="schnet",
-        n_train=10,
-        n_test=10,
-        lr=0.01,
-        epochs=2,
-        save_path=None,
-        batch_size=32,
-        writer=None,
+    trainable: Trainable,
+    model="schnet",
+    n_train=10,
+    n_test=10,
+    lr=0.01,
+    epochs=2,
+    save_path=None,
+    batch_size=32,
+    writer=None,
 ):
     print("Training...")
     model_type = model
