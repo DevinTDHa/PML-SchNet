@@ -26,16 +26,16 @@ from pml_schnet.validation import (
 
 
 def train(
-    model,
-    dataset,
-    task,
-    molecule=None,
-    epochs=1,
-    lr=0.01,
-    n_train=100,
-    n_test=100,
-    batch_size=32,
-    writer=None,
+        model,
+        dataset,
+        task,
+        molecule=None,
+        epochs=1,
+        lr=0.01,
+        n_train=100,
+        n_test=100,
+        batch_size=32,
+        writer=None,
 ):
     # generic train router for all models
     if molecule is not None and dataset != "MD17":
@@ -103,19 +103,21 @@ def validate(model, dataset, task, molecule, n_train, n_test):
         elif task == Task.energy_and_force:
             return validate_schnet_force_energy(model, test_gen)
     else:
-        raise ValueError("Invalid Task or Dataset, could not validate model")
+        raise ValueError(
+            f"Invalid Task or Dataset, could not validate model "
+            f"for {model, dataset, task, molecule, n_train, n_test}")
 
 
 def train_and_validate(
-    trainable: Trainable,
-    model="schnet",
-    n_train=10,
-    n_test=10,
-    lr=0.01,
-    epochs=2,
-    save_path=None,
-    batch_size=32,
-    writer=None,
+        trainable: Trainable,
+        model="schnet",
+        n_train=10,
+        n_test=10,
+        lr=0.01,
+        epochs=2,
+        save_path=None,
+        batch_size=32,
+        writer=None,
 ):
     print("Training...")
     model, train_loss = train(
