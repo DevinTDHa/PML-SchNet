@@ -105,7 +105,7 @@ def validate(model, dataset, task, molecule, n_train, n_test):
     else:
         raise ValueError(
             f"Invalid Task or Dataset, could not validate model "
-            f"for {model, dataset, task, molecule, n_train, n_test}")
+            f"for {dataset, task, molecule, n_train, n_test}")
 
 
 def train_and_validate(
