@@ -5,6 +5,7 @@ from torch import nn
 
 from pml_schnet.activation import ShiftedSoftPlus
 from pml_schnet.layers import SchNetInteraction
+from pml_schnet.visualization.plotting import an_to_element
 
 
 class PairwiseDistances(nn.Module):
@@ -60,6 +61,7 @@ class SchNet(nn.Module):
         rbf_max=30.0,
         n_rbf=300,
         activation: nn.Module = ShiftedSoftPlus,
+        writer=None,
     ):
         """
         # Molecular representation NOTES
@@ -77,7 +79,9 @@ class SchNet(nn.Module):
          t
         """
         super().__init__()
-
+        self.time_step = 0
+        self.writer = writer
+        self.max_z = max_z
         self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
 
         self.interactions = nn.ModuleList(
@@ -113,18 +117,23 @@ class SchNet(nn.Module):
 
         # 2),3),4) each Interaction 64 with recurrent layers
         X_interacted = X
-        for interaction in self.interactions:
+        for i, interaction in enumerate(self.interactions):
             X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)
+            self.writer.add_histogram(f"interaction_{i}", X_interacted, self.time_step)
+            # self.writer.add_scalar(f'Gradient_norm/{name}', param.grad.norm(), epoch)
 
         # 5) atom-wise 32
         # 6) Shifted Softplus
         # 7) atom-wise 1
         atom_outputs = self.output_layers(X_interacted)
+        self.writer.add_histogram(f"atom_outputs", atom_outputs, self.time_step)
 
         # Assign Flattened Atoms Back to Molecules
-        atom_partitions = torch.split(atom_outputs, N)
+        atom_partitions = torch.split(
+            atom_outputs, N.tolist() if isinstance(N, torch.Tensor) else N
+        )
 
         # 8) Sum Pooling
         predicted_energies = torch.stack([p.sum() for p in atom_partitions])
-
+        self.time_step += 1
         return predicted_energies

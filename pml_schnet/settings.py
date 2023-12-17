@@ -29,7 +29,10 @@ class Trainable:
     molecule: str = None
 
     def __str__(self):
-        return f"{self.dataset}'_'{self.task}'_'{self.molecule}"
+        if self.molecule:
+            return f"{self.dataset}_{self.task}_{self.molecule}"
+        else:
+            return f"{self.dataset}_{self.task}"
 
 
 valid_molecules = {

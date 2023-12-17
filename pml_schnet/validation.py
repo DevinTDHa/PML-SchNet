@@ -77,10 +77,13 @@ def validate_baseline_energy_force(model, dataset, n_train, n_test, molecule):
     return mean_loss
 
 
-
 def validate_schnet_energy(model, dataset, n_train, n_test, molecule):
     pass
+
+
 def validate_schnet_force(model, dataset, n_train, n_test, molecule):
     pass
+
+
 def validate_schnet_energy_force(model, dataset, n_train, n_test, molecule):
     pass
