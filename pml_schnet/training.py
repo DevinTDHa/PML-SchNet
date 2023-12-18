@@ -42,7 +42,7 @@ def validate_schnet_force_energy(model, test_gen):
         loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
         val_loss.append(loss)
 
-    return np.mean(val_loss)
+    return val_loss[0].item()
 
 
 def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
@@ -180,3 +180,16 @@ def train_schnet_energy_force(
 
 def train_schnet_force(model_obj, n_train, n_test, lr, epochs, dataset, batch_size):
     pass
+
+
+# 'ISO17_energy_and_force': {'success': False},
+# 'MD17_energy_and_force_aspirin': {'success': False},
+# 'MD17_energy_and_force_azobenzene': {'success': False},
+# 'MD17_energy_and_force_benzene': {'success': False},
+# 'MD17_energy_and_force_ethanol': {'success': False},
+# 'MD17_energy_and_force_malonaldehyde': {'success': False},
+# 'MD17_energy_and_force_naphthalene': {'success': False},
+# 'MD17_energy_and_force_paracetamol': {'success': False},
+# 'MD17_energy_and_force_salicylic_acid': {'success': False},
+# 'MD17_energy_and_force_toluene': {'success': False},
+# 'MD17_energy_and_force_uracil': {'success': False},
