@@ -5,7 +5,6 @@ from torch import nn
 
 from pml_schnet.activation import ShiftedSoftPlus
 from pml_schnet.layers import SchNetInteraction
-from pml_schnet.visualization.plotting import an_to_element
 
 
 class PairwiseDistances(nn.Module):
@@ -76,7 +75,6 @@ class SchNet(nn.Module):
 
 
         # INTERACTION BLOCK NOTES
-         t
         """
         super().__init__()
         self.time_step = 0
@@ -94,28 +92,26 @@ class SchNet(nn.Module):
         )
 
         self.output_layers = nn.Sequential(
-            nn.Linear(atom_embedding_dim, 32),  # , bias=False),  # TODO: why no bias?
+            nn.Linear(atom_embedding_dim, 32),
             activation(),
             nn.Linear(32, 1),
         )
         self.pairwise = PairwiseDistances()
 
     def forward(self, inputs: Dict):
-        Z = inputs["Z"]  # Atomic numbers. Label
+        Z = inputs["Z"]  # Atomic numbers
 
         N = inputs["N"]  # Number of atoms in each molecule
-        # AKA R_ij/  vectors pointing from center atoms to neighboring atoms
-        # R_distances = inputs["d"]
 
         R_distances = self.pairwise(inputs)
 
         idx_i = inputs["idx_i"]  # indices of center atoms
         idx_j = inputs["idx_j"]  # indices of neighboring atoms
 
-        # 1) Embedding 64 ( see section Molecular representation).
+        # 1) Embedding 64 (See section Molecular representation).
         X = self.embedding(Z)
 
-        # 2),3),4) each Interaction 64 with recurrent layers
+        # 2),3),4) each Interaction 64 with residual layers
         X_interacted = X
         for i, interaction in enumerate(self.interactions):
             X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)

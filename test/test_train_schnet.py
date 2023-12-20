@@ -195,6 +195,8 @@ def test_train_schnet_force_and_energy():
                     # Backward pass and optimization
                     optimizer.zero_grad()  # Clear gradients
                     loss.backward()  # Compute gradients
+
+                    print_mean_grad_stats(model)
                     optimizer.step()  # Update weights
 
                     progress_bar.set_postfix(train_loss=f"{loss:.4E}")
@@ -257,6 +259,15 @@ def print_grad_stats(model):
         ]:
             formatted_str += f"{stat:.2E}\t"
         print(formatted_str)
+
+
+def print_mean_grad_stats(model: SchNet):
+    parameter_grad_mins = np.array([p.grad.min().item() for p in model.parameters()])
+    parameter_grad_maxs = np.array([p.grad.max().item() for p in model.parameters()])
+    grad_avg_mins = parameter_grad_mins.mean()
+    grad_avg_maxs = parameter_grad_maxs.mean()
+
+    print(f"Avg. Min: {grad_avg_mins:.2E}, Avg. Max : {grad_avg_maxs:.2E}")
 
 
 def test_train_schnet_force_iso17():
