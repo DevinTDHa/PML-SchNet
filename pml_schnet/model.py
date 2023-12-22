@@ -115,14 +115,18 @@ class SchNet(nn.Module):
         X_interacted = X
         for i, interaction in enumerate(self.interactions):
             X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)
-            self.writer.add_histogram(f"interaction_{i}", X_interacted, self.time_step)
+            if self.writer:
+                self.writer.add_histogram(
+                    f"interaction_{i}", X_interacted, self.time_step
+                )
             # self.writer.add_scalar(f'Gradient_norm/{name}', param.grad.norm(), epoch)
 
         # 5) atom-wise 32
         # 6) Shifted Softplus
         # 7) atom-wise 1
         atom_outputs = self.output_layers(X_interacted)
-        self.writer.add_histogram(f"atom_outputs", atom_outputs, self.time_step)
+        if self.writer:
+            self.writer.add_histogram(f"atom_outputs", atom_outputs, self.time_step)
 
         # Assign Flattened Atoms Back to Molecules
         atom_partitions = torch.split(

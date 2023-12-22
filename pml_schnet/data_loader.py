@@ -43,6 +43,7 @@ def load_data(
     log=False,
     iso17_fold="reference",
     cache_dir=settings.cache_dir,
+    split_file=None,
 ):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
@@ -55,7 +56,7 @@ def load_data(
             num_test=0,
             num_val=n_test,
             transforms=[ASENeighborList(np.inf)],
-            split_file=None,
+            split_file=split_file,
         )
     elif dataset == "MD17":
         if molecule is None:
@@ -73,7 +74,7 @@ def load_data(
             num_test=0,
             num_val=n_test,
             transforms=[ASENeighborList(np.inf)],
-            split_file=None,
+            split_file=split_file,
         )
     elif dataset == "ISO17":
         db_path = os.path.join(cache_dir, "iso17.db")
@@ -86,7 +87,7 @@ def load_data(
             num_test=0,
             num_val=n_test,
             transforms=[ASENeighborList(np.inf)],
-            split_file=None,
+            split_file=split_file,
         )
     else:
         raise ValueError("Only QM9, MD17 and ISO17 are supported but used ", dataset)
