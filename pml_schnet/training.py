@@ -21,17 +21,20 @@ def write_grads(model, writer, epoch):
 
 def validate_schnet(model, test_gen, criterion):
     val_loss = []
+    labels = []
     for X_batch, y_batch in test_gen:
         # Forward pass
         pred = model(X_batch)
         loss = criterion(pred, y_batch)
+        labels.append(pred.item())
         val_loss.append(loss.item())
 
-    return np.mean(val_loss)
+    return np.mean(val_loss),labels
 
 
 def validate_schnet_force_energy(model, test_gen):
     val_loss = []
+    labels = []
     for X_batch, y_batch in test_gen:
         # Forward pass
         X_batch["R"].requires_grad_()
@@ -40,9 +43,11 @@ def validate_schnet_force_energy(model, test_gen):
         # Forward pass
         E_pred = model(X_batch)
         loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
+        labels.append(derive_force(E_pred, X_batch["R"]).item())
+
         val_loss.append(loss)
 
-    return val_loss[0].item()
+    return val_loss[0].item(),labels
 
 
 def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):

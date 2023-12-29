@@ -9,8 +9,6 @@ from pml_schnet.training import (
     train_baseline_energy,
     train_baseline_force,
     train_baseline_energy_force,
-    train_schnet_force,
-    train_schnet_energy_force,
     train_schnet_energy,
     validate_schnet,
     validate_schnet_force_energy,
@@ -58,7 +56,7 @@ def train(
                 model_obj, n_train, n_test, lr, epochs, dataset
             )
     elif model == Model.schnet:
-        #TODO train_schnet_force or train_schnet_energy enough?
+        # TODO train_schnet_force or train_schnet_energy enough?
         if task == Task.force:
             return model_obj, train_schnet_energy(
                 model_obj, n_train, n_test, lr, epochs, dataset, batch_size
@@ -83,6 +81,7 @@ def train(
 
 
 def validate(model, model_type, dataset, task, molecule, n_train, n_test):
+    # returns loss,predicted_labels
     if model_type == Model.baseline:
         if task == Task.energy:
             return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
@@ -121,6 +120,7 @@ def train_and_validate(
     save_path=None,
     batch_size=32,
     writer=None,
+    return_labels_for_test_only=False,
 ):
     print("Training...")
     model_type = model
@@ -137,7 +137,7 @@ def train_and_validate(
         writer=writer,
     )
     print("Training loss : ", train_loss)
-    test_loss = validate(
+    test_loss, predicted_labels = validate(
         model,
         model_type,
         trainable.dataset,
@@ -151,7 +151,49 @@ def train_and_validate(
     if save_path:
         print("Saving model to", save_path)
         torch.save(model, save_path)
+
+    if return_labels_for_test_only:
+        return predicted_labels
     return train_loss, test_loss
+
+
+def train_apply(
+    method="method_name", #
+    dataset="dataset_name",# QM9, MD17, ISO17
+    task="energy", # energy, force, energy_and_force
+    molecule="aspirin",# ...
+    n_train=10,
+    n_test=10,
+    lr=0.01,
+    epochs=2,
+    save_path=None,
+    batch_size=32,
+):
+    """
+
+    :param method:  baseline or schnet
+    :param dataset: QM9, MD17, ISO17
+    :param task: energy, force, energy_and_force
+    :param molecule: aspirin, azobenzene, benzene, ethanol, malonaldehyde, naphthalene, paracetamol, salicylic_acid, toluene or  uracil
+    :param n_train: num of train samples
+    :param n_test: num of test samples
+    :param lr: learning rate
+    :param epochs: epochs
+    :param save_path: where to store model, if None model not saved
+    :param batch_size: batchsize during training
+    :return:
+    """
+    return train_and_validate(
+        Trainable(dataset, molecule, task),
+        model=method,
+        n_train=n_train,
+        n_test=n_test,
+        lr=lr,
+        epochs=epochs,
+        save_path=save_path,
+        batch_size=batch_size,
+        return_labels_for_test_only=True,
+    )
 
 
 def get_model(model, writer=None):
