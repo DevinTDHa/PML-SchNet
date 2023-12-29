@@ -26,7 +26,8 @@ def validate_schnet(model, test_gen, criterion):
         # Forward pass
         pred = model(X_batch)
         loss = criterion(pred, y_batch)
-        labels.append(pred.item())
+        # labels.append(pred.item())
+        labels.append(pred)
         val_loss.append(loss.item())
 
     return np.mean(val_loss),labels
@@ -43,7 +44,7 @@ def validate_schnet_force_energy(model, test_gen):
         # Forward pass
         E_pred = model(X_batch)
         loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
-        labels.append(energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F,return_force_labels=True))
+        labels.append(energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F,return_force_labels=True)) # .item()
 
         val_loss.append(loss)
 
