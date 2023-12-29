@@ -12,7 +12,8 @@ sys.path.append(os.getcwd())
 
 from pml_schnet.route import train_and_validate
 from pml_schnet.settings import train_modes, Trainable
-
+# TODO's
+# Log duration/paramerize method/
 parser = argparse.ArgumentParser(description="Train a model")
 parser.add_argument(
     "-d", "--dataset", type=str, default="QM9", help="Dataset to use (QM9, MD17, ISO17)"
@@ -39,7 +40,7 @@ parser.add_argument(
 )
 parser.add_argument("-b", "--batch_size", default=1, type=int, help="batchsize ")
 
-parser.add_argument("-s", "--save", type=bool, default=False, help="save final model")
+parser.add_argument("-s", "--save", type=bool, default=True, help="save final model")
 
 parser.add_argument(
     "-M",
