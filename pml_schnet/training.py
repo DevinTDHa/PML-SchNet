@@ -160,7 +160,7 @@ def train_schnet_energy(model_obj, n_train, n_test, lr, epochs, dataset, batch_s
             losses.append(loss.item())
             writer.add_scalar("Loss", loss.item(), epoch)
             writer.add_scalar(
-                "Validation", validate_schnet(model_obj, test_gen, criterion), epoch
+                "Validation", validate_schnet(model_obj, test_gen, criterion)[0], epoch
             )
             write_grads(model_obj, writer, epoch)
             checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
