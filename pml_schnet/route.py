@@ -181,7 +181,7 @@ def train_apply(
     :param epochs: epochs
     :param save_path: where to store model, if None model not saved
     :param batch_size: batchsize during training
-    :return:
+    :return: predicted labels for test data
     """
     return train_and_validate(
         Trainable(dataset, molecule, task),
