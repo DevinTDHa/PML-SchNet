@@ -66,6 +66,7 @@ if args.train_mode:
                 logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
                 writer = SummaryWriter(logs_dir)
                 save_path = f"model_{trainable}_{timestamp}.pt" if args.save else None
+                results[str(trainable)]['save_path'] = save_path
                 print("Training...")
                 train_loss, test_loss = train_and_validate(
                     trainable,
