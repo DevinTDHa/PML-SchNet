@@ -150,6 +150,8 @@ def train_and_validate(
 
     if save_path:
         print("Saving model to", save_path)
+        # TODO maybe smarter
+        model.writer = None
         torch.save(model, save_path)
 
     if return_labels_for_test_only:
