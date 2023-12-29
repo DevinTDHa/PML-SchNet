@@ -11,7 +11,7 @@ def derive_force(E_pred, R):
     )[0]
 
 
-def energy_force_loss(E_pred, R, E, F):
+def energy_force_loss(E_pred, R, E, F, return_force_labels=False):
     rho = 0.01
     dist_E = rho * (E - E_pred) ** 2
     batch_size = len(E_pred)
@@ -22,4 +22,6 @@ def energy_force_loss(E_pred, R, E, F):
     diff_F = F.view(batch_size, -1, 3) - dEdR.view(batch_size, -1, 3)
     dist_F = torch.norm(diff_F, dim=-1)
     dist_F_mean = (dist_F**2).mean(axis=1)
+    if return_force_labels:
+        dEdR
     return (dist_E + dist_F_mean).mean()

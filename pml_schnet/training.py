@@ -43,7 +43,7 @@ def validate_schnet_force_energy(model, test_gen):
         # Forward pass
         E_pred = model(X_batch)
         loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
-        labels.append(derive_force(E_pred, X_batch["R"]).item())
+        labels.append(energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F,return_force_labels=True))
 
         val_loss.append(loss)
 
