@@ -23,7 +23,7 @@ parser.add_argument(
     "--molecule",
     type=str,
     default="aspirin",
-    help="Molecule to use for MD17 dataset",
+    help="Molecullse to use for MD17 dataset",
 )
 parser.add_argument(
     "-t", "--task", type=str, default="energy", help="energy or force prediction task"
@@ -54,18 +54,23 @@ print("ARGS ARE :", args)
 
 print("CUDA AVAILABLE:", torch.cuda.is_available())
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+save_folder = f"runs/{args.train_mode}_{timestamp}"
+os.makedirs(save_folder, exist_ok=True)
+
 if args.train_mode:
     if args.train_mode not in train_modes.keys():
         raise ValueError(f"train_mode must be one of {train_modes.keys()}")
     else:
         results = {}
+
         for trainable in train_modes[args.train_mode]:
             results[str(trainable)] = {}
             print(f"Training {trainable}")
             try:
-                logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
-                writer = SummaryWriter(logs_dir)
-                save_path = f"model_{trainable}_{timestamp}.pt" if args.save else None
+                tf_logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
+                writer = SummaryWriter(tf_logs_dir)
+                save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
                 results[str(trainable)]['save_path'] = save_path
                 print("Training...")
                 train_loss, test_loss = train_and_validate(
@@ -93,15 +98,16 @@ if args.train_mode:
         print("Done!")
         pprint(results)
 
-        filename = f"model_test_run_{timestamp}.json"
-        with open(filename, "w") as file:
+        summary_file = f"{save_folder}/summary_model_test_run_{timestamp}.json"
+        with open(summary_file, "w") as file:
             json.dump(results, file, indent=4)
-        print(f"Data dumped to {filename}")
+        print(f"Training Summary dumped to {summary_file}")
 
 else:
     trainable = Trainable(dataset=args.dataset, task=args.task, molecule=args.molecule)
-    logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
-    writer = SummaryWriter(logs_dir)
+    tf_logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
+    writer = SummaryWriter(tf_logs_dir)
+    save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
     train_and_validate(
         trainable,
         "schnet",
@@ -111,4 +117,8 @@ else:
         n_test=args.n_test,
         batch_size=args.batch_size,
         writer=writer,
+        save_path=save_path,
     )
+
+
+# Data dumped to model_test_run_20231229_165821.json 100min
