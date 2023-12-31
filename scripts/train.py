@@ -73,20 +73,23 @@ if args.train_mode:
                 save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
                 results[str(trainable)]['save_path'] = save_path
                 print("Training...")
-                train_loss, test_loss = train_and_validate(
+                train_loss, test_loss ,model= train_and_validate(
                     trainable,
                     "schnet",
                     epochs=args.epochs,
                     n_train=args.n_train,
                     n_test=args.n_test,
                     lr=args.learning_rate,
-                    save_path=save_path,
+                    return_model= True if save_path else False,
                     batch_size=args.batch_size,
                     writer=writer,
                 )
                 results[str(trainable)]["success"] = True
                 results[str(trainable)]["train_loss"] = train_loss
                 results[str(trainable)]["test_loss"] = test_loss
+                print("Saving model to", save_path)
+                torch.save(model, save_path)
+
             except Exception as e:
                 results[str(trainable)]["success"] = False
                 import traceback

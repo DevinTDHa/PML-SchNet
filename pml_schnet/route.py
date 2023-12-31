@@ -1,4 +1,3 @@
-import torch
 from torch import nn
 
 from pml_schnet.data_loader import load_data
@@ -117,7 +116,7 @@ def train_and_validate(
     n_test=10,
     lr=0.01,
     epochs=2,
-    save_path=None,
+    return_model=None,
     batch_size=32,
     writer=None,
     return_labels_for_test_only=False,
@@ -148,11 +147,10 @@ def train_and_validate(
     )
     print("Test loss : ", test_loss)
 
-    if save_path:
-        print("Saving model to", save_path)
+    if return_model:
         # TODO maybe smarter
         model.writer = None
-        torch.save(model, save_path)
+        return train_loss, test_loss, model
 
     if return_labels_for_test_only:
         return predicted_labels
@@ -160,10 +158,10 @@ def train_and_validate(
 
 
 def train_apply(
-    method="method_name", #
-    dataset="dataset_name",# QM9, MD17, ISO17
-    task="energy", # energy, force, energy_and_force
-    molecule="aspirin",# ...
+    method="method_name",  #
+    dataset="dataset_name",  # QM9, MD17, ISO17
+    task="energy",  # energy, force, energy_and_force
+    molecule="aspirin",  # ...
     n_train=10,
     n_test=10,
     lr=0.01,
