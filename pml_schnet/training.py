@@ -24,7 +24,7 @@ def validate_schnet_energy(model, test_gen, criterion):
         pred = model(X_batch)
         loss = criterion(pred, y_batch)
         # labels.append(pred.item())
-        # labels.append(pred) TODO
+        # labels.append(pred) TODO: Detach and to CPU first
         val_loss.append(loss.item())
 
     return val_loss, labels
@@ -44,7 +44,7 @@ def validate_schnet_force(model, test_gen, criterion):
 
         loss = criterion(F_pred, target_F)
         # labels.append(pred.item())
-        # labels.append(F_pred) TODO
+        # labels.append(F_pred) TODO: Detach and to CPU first
         val_loss.append(loss.item())
 
     return val_loss, labels
@@ -63,7 +63,7 @@ def validate_schnet_force_energy(model, test_gen):
         loss, F_pred = energy_force_loss(
             E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F, return_force_labels=True
         )
-        # labels.append(F_pred) TODO
+        # labels.append(F_pred) TODO: Detach and to CPU first
 
         val_loss.append(loss.item())
 
@@ -152,7 +152,15 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
 
 
 def train_schnet_energy(
-    model_obj, n_train, n_test, lr, epochs, dataset, batch_size, split_file=None
+    model_obj,
+    n_train,
+    n_test,
+    lr,
+    epochs,
+    dataset,
+    batch_size,
+    molecule,
+    split_file=None,
 ):
     # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
@@ -162,7 +170,12 @@ def train_schnet_energy(
         progress_bar.set_description("Schnet E")
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
-                dataset, n_train, n_test, batch_size=batch_size, split_file=split_file
+                dataset,
+                n_train,
+                n_test,
+                batch_size=batch_size,
+                molecule=molecule,
+                split_file=split_file,
             )
             for X_batch, y_batch in train_gen:
                 # Forward pass
@@ -197,7 +210,15 @@ def train_schnet_energy(
 
 
 def train_schnet_energy_force(
-    model_obj, n_train, n_test, lr, epochs, dataset, batch_size, split_file=None
+    model_obj,
+    n_train,
+    n_test,
+    lr,
+    epochs,
+    dataset,
+    batch_size,
+    molecule,
+    split_file=None,
 ):
     # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
@@ -207,7 +228,12 @@ def train_schnet_energy_force(
         progress_bar.set_description("Schnet E+F")
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
-                dataset, n_train, n_test, batch_size=batch_size, split_file=split_file
+                dataset,
+                n_train,
+                n_test,
+                batch_size=batch_size,
+                split_file=split_file,
+                molecule=molecule,
             )
             for X_batch, y_batch in train_gen:
                 # Forward pass
@@ -249,7 +275,15 @@ def train_schnet_energy_force(
 
 
 def train_schnet_force(
-    model_obj, n_train, n_test, lr, epochs, dataset, batch_size, split_file=None
+    model_obj,
+    n_train,
+    n_test,
+    lr,
+    epochs,
+    dataset,
+    batch_size,
+    molecule,
+    split_file=None,
 ):
     # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
@@ -258,7 +292,12 @@ def train_schnet_force(
     with tqdm(total=epochs, ncols=80) as progress_bar:
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
-                dataset, n_train, n_test, batch_size=batch_size, split_file=split_file
+                dataset,
+                n_train,
+                n_test,
+                batch_size=batch_size,
+                split_file=split_file,
+                molecule=molecule,
             )
             for X_batch, y_batch in train_gen:
                 # Forward pass

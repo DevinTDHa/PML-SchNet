@@ -76,6 +76,7 @@ def train(
                 dataset,
                 batch_size,
                 split_file=split_file,
+                molecule=molecule,
             )
         elif task == Task.energy_and_force:
             return model_obj, train_schnet_energy_force(
@@ -87,6 +88,7 @@ def train(
                 dataset,
                 batch_size,
                 split_file=split_file,
+                molecule=molecule,
             )
         elif task == Task.energy:
             return model_obj, train_schnet_energy(
@@ -98,6 +100,7 @@ def train(
                 dataset,
                 batch_size,
                 split_file=split_file,
+                molecule=molecule,
             )
 
     raise ValueError("Invalid Task or Dataset, could not train model")
