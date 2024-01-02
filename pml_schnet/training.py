@@ -1,6 +1,3 @@
-import os
-
-import numpy as np
 import torch
 from torch import nn
 from tqdm import tqdm
@@ -19,7 +16,7 @@ def write_grads(model, writer, epoch):
             writer.add_scalar(f"Gradient_norm/{name}", param.grad.norm(), epoch)
 
 
-def validate_schnet(model, test_gen, criterion):
+def validate_schnet_energy(model, test_gen, criterion):
     val_loss = []
     labels = []
     for X_batch, y_batch in test_gen:
@@ -30,7 +27,27 @@ def validate_schnet(model, test_gen, criterion):
         labels.append(pred)
         val_loss.append(loss.item())
 
-    return np.mean(val_loss),labels
+    return val_loss, labels
+
+
+def validate_schnet_force(model, test_gen, criterion):
+    val_loss = []
+    labels = []
+    for X_batch, y_batch in test_gen:
+        # Forward pass
+        X_batch["R"].requires_grad_()
+        target_F = X_batch["F"]
+        target_F.requires_grad_()
+
+        E_pred = model(X_batch)
+        F_pred = derive_force(E_pred, X_batch["R"])
+
+        loss = criterion(F_pred, target_F)
+        # labels.append(pred.item())
+        labels.append(F_pred)
+        val_loss.append(loss.item())
+
+    return val_loss, labels
 
 
 def validate_schnet_force_energy(model, test_gen):
@@ -43,12 +60,14 @@ def validate_schnet_force_energy(model, test_gen):
 
         # Forward pass
         E_pred = model(X_batch)
-        loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
-        labels.append(energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F,return_force_labels=True)) # .item()
+        loss, F_pred = energy_force_loss(
+            E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F, return_force_labels=True
+        )
+        labels.append(F_pred)
 
-        val_loss.append(loss)
+        val_loss.append(loss.item())
 
-    return val_loss[0].item(),labels
+    return val_loss, labels
 
 
 def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
@@ -57,7 +76,6 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
     losses = []
     for epoch in tqdm(range(epochs)):
         train_gen, test_gen = load_data(dataset, n_train, n_test)
-        loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
             X_batch["N"] = X_batch["N"].to(device)
@@ -69,8 +87,8 @@ def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
             optimizer.step()  # Update weights
-        print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-        losses.append({"epoch": epoch, "loss": loss.item()})
+            print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
+            losses.append({"epoch": epoch, "loss": loss.item()})
     # plot_loss(losses)
     return losses[-1]["loss"]
 
@@ -81,7 +99,6 @@ def train_baseline_force(model, n_train, n_test, lr, epochs, dataset):
     losses = []
     for epoch in tqdm(range(epochs)):
         train_gen, test_gen = load_data(dataset, n_train, n_test)
-        loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
             X_batch["N"] = X_batch["N"].to(device)
@@ -101,8 +118,8 @@ def train_baseline_force(model, n_train, n_test, lr, epochs, dataset):
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
             optimizer.step()  # Update weights
-        print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-        losses.append({"epoch": epoch, "loss": loss.item()})
+            print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
+            losses.append({"epoch": epoch, "loss": loss.item()})
     plot_loss(losses)
     return losses[-1]["loss"]
 
@@ -113,7 +130,6 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
 
     for epoch in tqdm(range(epochs)):
         train_gen, test_gen = load_data(dataset, n_train, n_test)
-        loss = None
         for X_batch, y_batch in train_gen:
             # Forward pass
             X_batch["N"] = X_batch["N"].to(device)
@@ -129,73 +145,158 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
             optimizer.zero_grad()  # Clear gradients
             loss.backward()  # Compute gradients
             optimizer.step()  # Update weights
-        print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
-        losses.append({"epoch": epoch, "loss": loss.item()})
+            print(f"Epoch {epoch + 1}, Train Loss: {loss:.4f}")
+            losses.append({"epoch": epoch, "loss": loss.item()})
     plot_loss(losses)
     return losses[-1]["loss"]
 
 
-def train_schnet_energy(model_obj, n_train, n_test, lr, epochs, dataset, batch_size):
-    writer = model_obj.writer
+def train_schnet_energy(
+    model_obj, n_train, n_test, lr, epochs, dataset, batch_size, split_file=None
+):
+    # writer = model_obj.writer
+    optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
+    criterion = nn.L1Loss()
+    losses = []
+    with tqdm(total=epochs, ncols=80) as progress_bar:
+        progress_bar.set_description("Schnet E")
+        for epoch in range(epochs):
+            train_gen, test_gen = load_data(
+                dataset, n_train, n_test, batch_size=batch_size, split_file=split_file
+            )
+            for X_batch, y_batch in train_gen:
+                # Forward pass
+                pred = model_obj(X_batch)
+                loss = criterion(pred, y_batch)
+                losses.append(loss.item())
+                # Backward pass and optimization
+                optimizer.zero_grad()  # Clear gradients
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+
+            progress_bar.update(1)
+            # writer.add_scalar("Loss", loss.item(), epoch)
+            # writer.add_scalar(
+            #     "Validation", np.mean(validate_schnet(model_obj, test_gen, criterion)[0]), epoch
+            # )
+            # write_grads(model_obj, writer, epoch)
+            # checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
+            # torch.save(
+            #     {
+            #         "epoch": epoch,
+            #         "model_state_dict": model_obj.state_dict(),
+            #         "optimizer_state_dict": optimizer.state_dict(),
+            #         "loss": loss,
+            #     },
+            #     checkpoint_path,
+            # )
+    # X_batch["N"] = torch.tensor(X_batch["N"])
+    # writer.add_graph(model_obj, X_batch)
+    return losses
+
+
+def train_schnet_energy_force(
+    model_obj, n_train, n_test, lr, epochs, dataset, batch_size, split_file=None
+):
+    # writer = model_obj.writer
+    optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
+    criterion = energy_force_loss
+    losses = []
+    with tqdm(total=epochs, ncols=80) as progress_bar:
+        progress_bar.set_description("Schnet E+F")
+        for epoch in range(epochs):
+            train_gen, test_gen = load_data(
+                dataset, n_train, n_test, batch_size=batch_size, split_file=split_file
+            )
+            for X_batch, y_batch in train_gen:
+                # Forward pass
+                X_batch["R"].requires_grad_()
+                F = X_batch["F"].to(device)
+
+                # Forward pass
+                E_pred = model_obj(X_batch)
+                loss = criterion(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
+                losses.append(loss.item())
+                # Backward pass and optimization
+                optimizer.zero_grad()  # Clear gradients
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+
+                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+
+            progress_bar.update(1)
+            # writer.add_scalar("Loss", loss.item(), epoch)
+            # writer.add_scalar(
+            #     "Validation",
+            #     np.mean(validate_schnet(model_obj, test_gen, criterion)[0]),
+            #     epoch,
+            # )
+            # write_grads(model_obj, writer, epoch)
+    #             checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
+    #             torch.save(
+    #                 {
+    #                     "epoch": epoch,
+    #                     "model_state_dict": model_obj.state_dict(),
+    #                     "optimizer_state_dict": optimizer.state_dict(),
+    #                     "loss": loss,
+    #                 },
+    #                 checkpoint_path,
+    #             )
+    #     X_batch["N"] = torch.tensor(X_batch["N"])
+    #     writer.add_graph(model_obj, (X_batch))
+    return losses
+
+
+def train_schnet_force(
+    model_obj, n_train, n_test, lr, epochs, dataset, batch_size, split_file=None
+):
+    # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
     criterion = nn.L1Loss()
     losses = []
     with tqdm(total=epochs, ncols=80) as progress_bar:
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
-                dataset, n_train, n_test, batch_size=batch_size
+                dataset, n_train, n_test, batch_size=batch_size, split_file=split_file
             )
-            loss = None
             for X_batch, y_batch in train_gen:
                 # Forward pass
-                pred = model_obj(X_batch)
-                loss = criterion(pred, y_batch)
+                X_batch["R"].requires_grad_()
+                target_F = X_batch["F"]
+                target_F.requires_grad_()
+
+                E_pred = model_obj(X_batch)
+
+                F_pred = derive_force(E_pred, X_batch["R"])
+
+                loss = criterion(F_pred, target_F)
+                losses.append(loss.item())
                 # Backward pass and optimization
                 optimizer.zero_grad()  # Clear gradients
                 loss.backward()  # Compute gradients
                 optimizer.step()  # Update weights
 
-            progress_bar.set_description("Schnet E")
-            progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+                progress_bar.set_description("Schnet F")
+                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
             progress_bar.update(1)
-            losses.append(loss.item())
-            writer.add_scalar("Loss", loss.item(), epoch)
-            writer.add_scalar(
-                "Validation", validate_schnet(model_obj, test_gen, criterion)[0], epoch
-            )
-            write_grads(model_obj, writer, epoch)
-            checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": model_obj.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": loss,
-                },
-                checkpoint_path,
-            )
-    X_batch["N"] = torch.tensor(X_batch["N"])
-    writer.add_graph(model_obj, (X_batch))
-    return losses[-1]
-
-def train_schnet_energy_force(
-    model_obj, n_train, n_test, lr, epochs, dataset, batch_size
-):
-    pass
-
-
-def train_schnet_force(model_obj, n_train, n_test, lr, epochs, dataset, batch_size):
-    pass
-
-
-# 'ISO17_energy_and_force': {'success': False},
-# 'MD17_energy_and_force_aspirin': {'success': False},
-# 'MD17_energy_and_force_azobenzene': {'success': False},
-# 'MD17_energy_and_force_benzene': {'success': False},
-# 'MD17_energy_and_force_ethanol': {'success': False},
-# 'MD17_energy_and_force_malonaldehyde': {'success': False},
-# 'MD17_energy_and_force_naphthalene': {'success': False},
-# 'MD17_energy_and_force_paracetamol': {'success': False},
-# 'MD17_energy_and_force_salicylic_acid': {'success': False},
-# 'MD17_energy_and_force_toluene': {'success': False},
-# 'MD17_energy_and_force_uracil': {'success': False},
+            # writer.add_scalar("Loss", loss.item(), epoch)
+            # writer.add_scalar(
+            #     "Validation",
+            #     np.mean(validate_schnet(model_obj, test_gen, criterion)[0]),
+            #     epoch,
+            # )
+            # write_grads(model_obj, writer, epoch)
+    #             checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
+    #             torch.save(
+    #                 {
+    #                     "epoch": epoch,
+    #                     "model_state_dict": model_obj.state_dict(),
+    #                     "optimizer_state_dict": optimizer.state_dict(),
+    #                     "loss": loss,
+    #                 },
+    #                 checkpoint_path,
+    #             )
+    #     X_batch["N"] = torch.tensor(X_batch["N"])
+    #     writer.add_graph(model_obj, (X_batch))
+    return losses

@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from pprint import pprint
 
+import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -12,6 +13,7 @@ sys.path.append(os.getcwd())
 
 from pml_schnet.route import train_and_validate
 from pml_schnet.settings import train_modes, Trainable
+
 # TODO's
 # Log duration/paramerize method/
 parser = argparse.ArgumentParser(description="Train a model")
@@ -63,39 +65,41 @@ if args.train_mode:
         raise ValueError(f"train_mode must be one of {train_modes.keys()}")
     else:
         results = {}
-
         for trainable in train_modes[args.train_mode]:
             results[str(trainable)] = {}
-            print(f"Training {trainable}")
+            print(f"Training {trainable}...")
             try:
-                tf_logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
-                writer = SummaryWriter(tf_logs_dir)
-                save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
-                results[str(trainable)]['save_path'] = save_path
-                print("Training...")
-                train_loss, test_loss ,model= train_and_validate(
-                    trainable,
-                    "schnet",
+                model_name = f"model_{trainable}_{timestamp}"
+                model_folder = f"{save_folder}/{model_name}/"
+                writer = SummaryWriter(model_folder)
+                save_path = f"{model_folder}/{model_name}.pt" if args.save else None
+                results[str(trainable)]["save_path"] = save_path
+                print(f"Training {model_name}")
+                train_loss, test_loss, model = train_and_validate(
+                    trainable=trainable,
+                    model="schnet",
                     epochs=args.epochs,
                     n_train=args.n_train,
                     n_test=args.n_test,
                     lr=args.learning_rate,
-                    return_model= True if save_path else False,
+                    return_model=True if save_path else False,
                     batch_size=args.batch_size,
                     writer=writer,
+                    return_labels_for_test_only=False,
+                    model_save_name=model_name,
                 )
                 results[str(trainable)]["success"] = True
-                results[str(trainable)]["train_loss"] = train_loss
-                results[str(trainable)]["test_loss"] = test_loss
+                results[str(trainable)]["train_loss"] = train_loss[-1]
+                results[str(trainable)]["test_loss"] = np.mean(test_loss)
                 print("Saving model to", save_path)
                 torch.save(model, save_path)
-
+                np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_loss)
+                np.savetxt(f"{model_folder}/{model_name}_test_loss.txt", test_loss)
             except Exception as e:
                 results[str(trainable)]["success"] = False
                 import traceback
 
                 traceback.print_exc()
-
                 print(f"Error {e} while training {trainable}")
                 continue
         print("Done!")
@@ -107,21 +111,21 @@ if args.train_mode:
         print(f"Training Summary dumped to {summary_file}")
 
 else:
-    trainable = Trainable(dataset=args.dataset, task=args.task, molecule=args.molecule)
-    tf_logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
-    writer = SummaryWriter(tf_logs_dir)
-    save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
-    train_and_validate(
-        trainable,
-        "schnet",
-        epochs=args.epochs,
-        n_train=args.n_train,
-        lr=args.learning_rate,
-        n_test=args.n_test,
-        batch_size=args.batch_size,
-        writer=writer,
-        save_path=save_path,
-    )
+    raise NotImplementedError()
+    # trainable = Trainable(dataset=args.dataset, task=args.task, molecule=args.molecule)
+    # tf_logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
+    # writer = SummaryWriter(tf_logs_dir)
+    # save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
+    # train_and_validate(
+    #     trainable,
+    #     model="schnet",
+    #     epochs=args.epochs,
+    #     n_train=args.n_train,
+    #     lr=args.learning_rate,
+    #     n_test=args.n_test,
+    #     batch_size=args.batch_size,
+    #     writer=writer,
+    # )
 
 
 # Data dumped to model_test_run_20231229_165821.json 100min

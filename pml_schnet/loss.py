@@ -22,6 +22,8 @@ def energy_force_loss(E_pred, R, E, F, return_force_labels=False):
     diff_F = F.view(batch_size, -1, 3) - dEdR.view(batch_size, -1, 3)
     dist_F = torch.norm(diff_F, dim=-1)
     dist_F_mean = (dist_F**2).mean(axis=1)
+    mean_total_dist = (dist_E + dist_F_mean).mean()
     if return_force_labels:
-        dEdR
-    return (dist_E + dist_F_mean).mean()
+        return mean_total_dist, dEdR
+    else:
+        return mean_total_dist
