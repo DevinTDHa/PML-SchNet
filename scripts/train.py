@@ -1,4 +1,5 @@
 import argparse
+import gc
 import json
 import os
 import sys
@@ -24,8 +25,7 @@ parser.add_argument(
     "-m",
     "--molecule",
     type=str,
-    default="aspirin",
-    help="Molecullse to use for MD17 dataset",
+    help="Molecule to use for MD17 dataset",
 )
 parser.add_argument(
     "-t", "--task", type=str, default="energy", help="energy or force prediction task"
@@ -57,10 +57,9 @@ print("ARGS ARE :", args)
 print("CUDA AVAILABLE:", torch.cuda.is_available())
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-save_folder = f"runs/{args.train_mode}_{timestamp}"
-os.makedirs(save_folder, exist_ok=True)
-
 if args.train_mode:
+    save_folder = f"runs/{args.train_mode}_{timestamp}"
+    os.makedirs(save_folder, exist_ok=True)
     if args.train_mode not in train_modes.keys():
         raise ValueError(f"train_mode must be one of {train_modes.keys()}")
     else:
@@ -95,6 +94,14 @@ if args.train_mode:
                 torch.save(model, save_path)
                 np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_loss)
                 np.savetxt(f"{model_folder}/{model_name}_test_loss.txt", test_loss)
+
+                # Clear cache
+                with torch.no_grad():
+                    del model
+                    del train_loss
+                    del test_loss
+                    gc.collect()
+                    torch.cuda.empty_cache()
             except Exception as e:
                 results[str(trainable)]["success"] = False
                 import traceback
@@ -111,21 +118,43 @@ if args.train_mode:
         print(f"Training Summary dumped to {summary_file}")
 
 else:
-    raise NotImplementedError()
-    # trainable = Trainable(dataset=args.dataset, task=args.task, molecule=args.molecule)
-    # tf_logs_dir = f"runs/model_{trainable}_{timestamp}_logs"
-    # writer = SummaryWriter(tf_logs_dir)
-    # save_path = f"runs/model_{trainable}_{timestamp}.pt" if args.save else None
-    # train_and_validate(
-    #     trainable,
-    #     model="schnet",
-    #     epochs=args.epochs,
-    #     n_train=args.n_train,
-    #     lr=args.learning_rate,
-    #     n_test=args.n_test,
-    #     batch_size=args.batch_size,
-    #     writer=writer,
-    # )
+    trainable = Trainable(dataset=args.dataset, task=args.task, molecule=args.molecule)
 
+    model_name = f"model_{trainable}_{timestamp}"
+    model_folder = f"runs/{model_name}_{timestamp}"
+    writer = SummaryWriter(model_folder)
+
+    results = {str(trainable): {}}
+    save_path = f"{model_folder}/{model_name}.pt" if args.save else None
+    results[str(trainable)]["save_path"] = save_path
+    print(f"Training {model_name}")
+    train_loss, test_loss, model = train_and_validate(
+        trainable=trainable,
+        model="schnet",
+        epochs=args.epochs,
+        n_train=args.n_train,
+        n_test=args.n_test,
+        lr=args.learning_rate,
+        return_model=True if save_path else False,
+        batch_size=args.batch_size,
+        writer=writer,
+        return_labels_for_test_only=False,
+        model_save_name=model_name,
+    )
+    results[str(trainable)]["success"] = True
+    results[str(trainable)]["train_loss"] = train_loss[-1]
+    results[str(trainable)]["test_loss"] = np.mean(test_loss)
+    print("Saving model to", save_path)
+    torch.save(model, save_path)
+    np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_loss)
+    np.savetxt(f"{model_folder}/{model_name}_test_loss.txt", test_loss)
+
+    print("Done!")
+    pprint(results)
+
+    summary_file = f"{model_folder}/summary_model_test_run_{timestamp}.json"
+    with open(summary_file, "w") as file:
+        json.dump(results, file, indent=4)
+    print(f"Training Summary dumped to {summary_file}")
 
 # Data dumped to model_test_run_20231229_165821.json 100min

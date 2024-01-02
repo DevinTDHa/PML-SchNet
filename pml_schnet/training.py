@@ -24,7 +24,7 @@ def validate_schnet_energy(model, test_gen, criterion):
         pred = model(X_batch)
         loss = criterion(pred, y_batch)
         # labels.append(pred.item())
-        labels.append(pred)
+        # labels.append(pred) TODO
         val_loss.append(loss.item())
 
     return val_loss, labels
@@ -44,7 +44,7 @@ def validate_schnet_force(model, test_gen, criterion):
 
         loss = criterion(F_pred, target_F)
         # labels.append(pred.item())
-        labels.append(F_pred)
+        # labels.append(F_pred) TODO
         val_loss.append(loss.item())
 
     return val_loss, labels
@@ -63,7 +63,7 @@ def validate_schnet_force_energy(model, test_gen):
         loss, F_pred = energy_force_loss(
             E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F, return_force_labels=True
         )
-        labels.append(F_pred)
+        # labels.append(F_pred) TODO
 
         val_loss.append(loss.item())
 
