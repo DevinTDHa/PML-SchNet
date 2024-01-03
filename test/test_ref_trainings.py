@@ -60,7 +60,7 @@ def test_ref_train_iso17_long():
                 losses.append(loss.item())
 
             # Validation Losses
-            val_losses = validate_schnet_force_energy(model, test_gen, nn.L1Loss())
+            val_losses = validate_schnet_force_energy(model, test_gen)
             print(f"Validation Loss Epoch {epoch}", np.mean(val_losses))
             progress_bar.update(1)
 
@@ -271,7 +271,7 @@ def test_ref_train_md17_aspirin_energy_force():
                 losses.append(loss.item())
 
             # Validation Losses
-            val_losses = validate_schnet_force_energy(model, test_gen, nn.L1Loss())
+            val_losses = validate_schnet_force_energy(model, test_gen)
             print(f"Validation Loss Epoch {epoch}", np.mean(val_losses))
             progress_bar.update(1)
 
