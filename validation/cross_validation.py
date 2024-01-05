@@ -177,7 +177,7 @@ def create_arg_parser():
     parser.add_argument(
         "--lr",
         type=positive_float,
-        default=0.01,
+        default=0.001,
         help="Learning rate for training (default: 0.01)",
     )
 

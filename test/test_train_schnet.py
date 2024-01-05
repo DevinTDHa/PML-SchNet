@@ -124,7 +124,7 @@ def test_inference_dummy_data(indexed_data):
 
 def test_train_schnet_energy():
     model = SchNet().to(device)
-    lr = 0.01
+    lr = 0.001
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.L1Loss()
@@ -170,7 +170,7 @@ def validate_test(model, test_gen, criterion):
 
 def test_train_schnet_force_and_energy():
     model = SchNet().to(device)
-    lr = 0.01
+    lr = 0.001
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     losses = []
@@ -272,7 +272,7 @@ def print_mean_grad_stats(model: SchNet):
 
 def test_train_schnet_force_iso17():
     model = SchNet().to(device)
-    lr = 0.01
+    lr = 0.001
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     losses = []

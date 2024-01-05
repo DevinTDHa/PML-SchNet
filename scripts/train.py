@@ -32,15 +32,15 @@ parser.add_argument(
 )
 parser.add_argument("-e", "--epochs", type=int, default=1, help="Number of epochs")
 parser.add_argument(
-    "-lr", "--learning_rate", type=float, default=0.01, help="Learning rate"
+    "-lr", "--learning_rate", type=float, default=0.001, help="Learning rate"
 )
 parser.add_argument(
-    "-n", "--n_train", type=int, default=1, help="number of training samples"
+    "-n", "--n_train", type=int, default=50000, help="number of training samples"
 )
 parser.add_argument(
-    "-nt", "--n_test", type=int, default=1, help="number of test samples"
+    "-nt", "--n_test", type=int, default=1000, help="number of test samples"
 )
-parser.add_argument("-b", "--batch_size", default=1, type=int, help="batchsize ")
+parser.add_argument("-b", "--batch_size", default=32, type=int, help="batchsize")
 
 parser.add_argument("-s", "--save", type=bool, default=True, help="save final model")
 
@@ -70,11 +70,11 @@ if args.train_mode:
             try:
                 model_name = f"model_{trainable}_{timestamp}"
                 model_folder = f"{save_folder}/{model_name}/"
-                writer = SummaryWriter(model_folder)
-                save_path = f"{model_folder}/{model_name}.pt" if args.save else None
+                os.makedirs(model_folder, exist_ok=True)
+                save_path = f"{model_folder}{model_name}.pt" if args.save else None
                 results[str(trainable)]["save_path"] = save_path
                 print(f"Training {model_name}")
-                train_loss, test_loss, model = train_and_validate(
+                train_losses, val_losses, model = train_and_validate(
                     trainable=trainable,
                     model="schnet",
                     epochs=args.epochs,
@@ -83,23 +83,23 @@ if args.train_mode:
                     lr=args.learning_rate,
                     return_model=True if save_path else False,
                     batch_size=args.batch_size,
-                    writer=writer,
                     return_labels_for_test_only=False,
                     model_save_name=model_name,
+                    split_save_folder=model_folder,
                 )
                 results[str(trainable)]["success"] = True
-                results[str(trainable)]["train_loss"] = train_loss[-1]
-                results[str(trainable)]["test_loss"] = np.mean(test_loss)
+                results[str(trainable)]["train_loss"] = train_losses[-1]
+                results[str(trainable)]["test_loss"] = np.min(val_losses)
                 print("Saving model to", save_path)
                 torch.save(model, save_path)
-                np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_loss)
-                np.savetxt(f"{model_folder}/{model_name}_test_loss.txt", test_loss)
+                np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_losses)
+                np.savetxt(f"{model_folder}/{model_name}_val_loss.txt", val_losses)
 
                 # Clear cache
                 with torch.no_grad():
                     del model
-                    del train_loss
-                    del test_loss
+                    del train_losses
+                    del val_losses
                     gc.collect()
                     torch.cuda.empty_cache()
             except Exception as e:
@@ -109,9 +109,9 @@ if args.train_mode:
                 traceback.print_exc()
                 print(f"Error {e} while training {trainable}")
                 continue
+
         print("Done!")
         pprint(results)
-
         summary_file = f"{save_folder}/summary_model_test_run_{timestamp}.json"
         with open(summary_file, "w") as file:
             json.dump(results, file, indent=4)
@@ -128,26 +128,25 @@ else:
     save_path = f"{model_folder}/{model_name}.pt" if args.save else None
     results[str(trainable)]["save_path"] = save_path
     print(f"Training {model_name}")
-    train_loss, test_loss, model = train_and_validate(
+    train_losses, val_losses, model = train_and_validate(
         trainable=trainable,
-        model="schnet",
-        epochs=args.epochs,
         n_train=args.n_train,
         n_test=args.n_test,
         lr=args.learning_rate,
+        epochs=args.epochs,
+        model="schnet",
         return_model=True if save_path else False,
         batch_size=args.batch_size,
-        writer=writer,
         return_labels_for_test_only=False,
         model_save_name=model_name,
     )
     results[str(trainable)]["success"] = True
-    results[str(trainable)]["train_loss"] = train_loss[-1]
-    results[str(trainable)]["test_loss"] = np.mean(test_loss)
+    results[str(trainable)]["train_loss"] = train_losses[-1]
+    results[str(trainable)]["test_loss"] = np.mean(val_losses)
     print("Saving model to", save_path)
     torch.save(model, save_path)
-    np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_loss)
-    np.savetxt(f"{model_folder}/{model_name}_test_loss.txt", test_loss)
+    np.savetxt(f"{model_folder}/{model_name}_train_loss.txt", train_losses)
+    np.savetxt(f"{model_folder}/{model_name}_test_loss.txt", val_losses)
 
     print("Done!")
     pprint(results)

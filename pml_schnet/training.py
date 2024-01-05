@@ -1,5 +1,7 @@
+import numpy as np
 import torch
 from torch import nn
+from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
 
 from pml_schnet.data_loader import load_data
@@ -27,7 +29,7 @@ def validate_schnet_energy(model, test_gen, criterion):
         # labels.append(pred) TODO: Detach and to CPU first
         val_loss.append(loss.item())
 
-    return val_loss, labels
+    return np.mean(val_loss), labels
 
 
 def validate_schnet_force(model, test_gen, criterion):
@@ -47,7 +49,7 @@ def validate_schnet_force(model, test_gen, criterion):
         # labels.append(F_pred) TODO: Detach and to CPU first
         val_loss.append(loss.item())
 
-    return val_loss, labels
+    return np.mean(val_loss), labels
 
 
 def validate_schnet_force_energy(model, test_gen):
@@ -60,14 +62,14 @@ def validate_schnet_force_energy(model, test_gen):
 
         # Forward pass
         E_pred = model(X_batch)
-        loss, F_pred = energy_force_loss(
-            E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F, return_force_labels=True
-        )
+        loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
+        E_pred.detach()
+        loss.detach()
         # labels.append(F_pred) TODO: Detach and to CPU first
 
         val_loss.append(loss.item())
 
-    return val_loss, labels
+    return np.mean(val_loss), labels
 
 
 def train_baseline_energy(model, n_train, n_test, lr, epochs, dataset):
@@ -161,11 +163,15 @@ def train_schnet_energy(
     batch_size,
     molecule,
     split_file=None,
+    scheduler_step_size=100_000,
 ):
     # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
+    scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
+    steps = 0
     criterion = nn.L1Loss()
     losses = []
+    val_losses = []
     with tqdm(total=epochs, ncols=80) as progress_bar:
         progress_bar.set_description("Schnet E")
         for epoch in range(epochs):
@@ -186,27 +192,18 @@ def train_schnet_energy(
                 optimizer.zero_grad()  # Clear gradients
                 loss.backward()  # Compute gradients
                 optimizer.step()  # Update weights
-                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
 
+                update_pbar_desc(loss, progress_bar, steps)
+                steps += 1
+                if steps == scheduler_step_size:
+                    scheduler.step()
+                    steps = 0
+
+            # End of Epoch
+            val_loss, _ = validate_schnet_energy(model_obj, test_gen, criterion)
+            val_losses.append(val_loss)
             progress_bar.update(1)
-            # writer.add_scalar("Loss", loss.item(), epoch)
-            # writer.add_scalar(
-            #     "Validation", np.mean(validate_schnet(model_obj, test_gen, criterion)[0]), epoch
-            # )
-            # write_grads(model_obj, writer, epoch)
-            # checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
-            # torch.save(
-            #     {
-            #         "epoch": epoch,
-            #         "model_state_dict": model_obj.state_dict(),
-            #         "optimizer_state_dict": optimizer.state_dict(),
-            #         "loss": loss,
-            #     },
-            #     checkpoint_path,
-            # )
-    # X_batch["N"] = torch.tensor(X_batch["N"])
-    # writer.add_graph(model_obj, X_batch)
-    return losses
+    return np.array(losses), np.array(val_losses)
 
 
 def train_schnet_energy_force(
@@ -219,11 +216,15 @@ def train_schnet_energy_force(
     batch_size,
     molecule,
     split_file=None,
+    scheduler_step_size=100_000,
 ):
     # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
+    scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
+    steps = 0
     criterion = energy_force_loss
     losses = []
+    val_losses = []
     with tqdm(total=epochs, ncols=80) as progress_bar:
         progress_bar.set_description("Schnet E+F")
         for epoch in range(epochs):
@@ -244,34 +245,23 @@ def train_schnet_energy_force(
                 E_pred = model_obj(X_batch)
                 loss = criterion(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
                 losses.append(loss.item())
+
                 # Backward pass and optimization
                 optimizer.zero_grad()  # Clear gradients
                 loss.backward()  # Compute gradients
                 optimizer.step()  # Update weights
 
-                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+                update_pbar_desc(loss, progress_bar, steps)
+                steps += 1
+                if steps == scheduler_step_size:
+                    scheduler.step()
+                    steps = 0
 
+            # End of Epoch
+            val_loss, _ = validate_schnet_force_energy(model_obj, test_gen)
+            val_losses.append(val_loss)
             progress_bar.update(1)
-            # writer.add_scalar("Loss", loss.item(), epoch)
-            # writer.add_scalar(
-            #     "Validation",
-            #     np.mean(validate_schnet(model_obj, test_gen, criterion)[0]),
-            #     epoch,
-            # )
-            # write_grads(model_obj, writer, epoch)
-    #             checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
-    #             torch.save(
-    #                 {
-    #                     "epoch": epoch,
-    #                     "model_state_dict": model_obj.state_dict(),
-    #                     "optimizer_state_dict": optimizer.state_dict(),
-    #                     "loss": loss,
-    #                 },
-    #                 checkpoint_path,
-    #             )
-    #     X_batch["N"] = torch.tensor(X_batch["N"])
-    #     writer.add_graph(model_obj, (X_batch))
-    return losses
+    return np.array(losses), np.array(val_losses)
 
 
 def train_schnet_force(
@@ -284,12 +274,17 @@ def train_schnet_force(
     batch_size,
     molecule,
     split_file=None,
+    scheduler_step_size=100_000,
 ):
     # writer = model_obj.writer
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=lr)
+    scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
+    steps = 0
     criterion = nn.L1Loss()
     losses = []
+    val_losses = []
     with tqdm(total=epochs, ncols=80) as progress_bar:
+        progress_bar.set_description("Schnet F")
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
                 dataset,
@@ -316,26 +311,22 @@ def train_schnet_force(
                 loss.backward()  # Compute gradients
                 optimizer.step()  # Update weights
 
-                progress_bar.set_description("Schnet F")
-                progress_bar.set_postfix(train_loss=f"{loss:.4E}")
+                update_pbar_desc(loss, progress_bar, steps)
+
+                steps += 1
+                if steps == scheduler_step_size:
+                    scheduler.step()
+                    steps = 0
+
+            # End of Epoch
+            val_loss, _ = validate_schnet_force(model_obj, test_gen, criterion)
+            val_losses.append(val_loss)
             progress_bar.update(1)
-            # writer.add_scalar("Loss", loss.item(), epoch)
-            # writer.add_scalar(
-            #     "Validation",
-            #     np.mean(validate_schnet(model_obj, test_gen, criterion)[0]),
-            #     epoch,
-            # )
-            # write_grads(model_obj, writer, epoch)
-    #             checkpoint_path = os.path.join(writer.log_dir, f"model_epoch_{epoch}.ckpt")
-    #             torch.save(
-    #                 {
-    #                     "epoch": epoch,
-    #                     "model_state_dict": model_obj.state_dict(),
-    #                     "optimizer_state_dict": optimizer.state_dict(),
-    #                     "loss": loss,
-    #                 },
-    #                 checkpoint_path,
-    #             )
-    #     X_batch["N"] = torch.tensor(X_batch["N"])
-    #     writer.add_graph(model_obj, (X_batch))
-    return losses
+
+    return np.array(losses), np.array(val_losses)
+
+
+def update_pbar_desc(loss, progress_bar, steps):
+    progress_bar.set_postfix(train_loss=f"{loss:.4E}", steps=str(steps), refresh=False)
+    if steps % 100 == 0:
+        progress_bar.refresh()

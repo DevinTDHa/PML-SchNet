@@ -55,7 +55,7 @@ def load_data(
             num_train=n_train,
             num_test=0,
             num_val=n_test,
-            transforms=[ASENeighborList(np.inf)],
+            transforms=[ASENeighborList(10e6)],
             split_file=split_file,
         )
     elif dataset == "MD17":
@@ -73,7 +73,7 @@ def load_data(
             num_train=n_train,
             num_test=0,
             num_val=n_test,
-            transforms=[ASENeighborList(np.inf)],
+            transforms=[ASENeighborList(1e6)],
             split_file=split_file,
         )
     elif dataset == "ISO17":
@@ -86,7 +86,7 @@ def load_data(
             num_train=n_train,
             num_test=0,
             num_val=n_test,
-            transforms=[ASENeighborList(np.inf)],
+            transforms=[ASENeighborList(10e6)],
             split_file=split_file,
         )
     else:

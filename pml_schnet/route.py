@@ -38,13 +38,12 @@ def train(
     n_train,
     n_test,
     batch_size,
-    writer,
     split_file,
 ):
     # generic train router for all models
     if molecule is not None and dataset != "MD17":
         raise ValueError("Molecule can only be specified for MD17 dataset")
-    model_obj = get_model(model, writer)
+    model_obj = get_model(model)
     model_obj = model_obj.to(device)
 
     if os.path.exists(split_file + ".npz"):
@@ -67,7 +66,7 @@ def train(
             )
     elif model == Model.schnet:
         if task == Task.force:
-            return model_obj, train_schnet_force(
+            train_losses, val_losses = train_schnet_force(
                 model_obj,
                 n_train,
                 n_test,
@@ -78,8 +77,9 @@ def train(
                 split_file=split_file,
                 molecule=molecule,
             )
+            return model_obj, train_losses, val_losses
         elif task == Task.energy_and_force:
-            return model_obj, train_schnet_energy_force(
+            train_losses, val_losses = train_schnet_energy_force(
                 model_obj,
                 n_train,
                 n_test,
@@ -90,8 +90,9 @@ def train(
                 split_file=split_file,
                 molecule=molecule,
             )
+            return model_obj, train_losses, val_losses
         elif task == Task.energy:
-            return model_obj, train_schnet_energy(
+            train_losses, val_losses = train_schnet_energy(
                 model_obj,
                 n_train,
                 n_test,
@@ -102,6 +103,7 @@ def train(
                 split_file=split_file,
                 molecule=molecule,
             )
+            return model_obj, train_losses, val_losses
 
     raise ValueError("Invalid Task or Dataset, could not train model")
 
@@ -115,17 +117,16 @@ def train_and_validate(
     model,
     return_model,
     batch_size,
-    writer,
     return_labels_for_test_only,
     model_save_name,
+    split_save_folder,
 ):
-    # print(f"Training {model_save_name}")
-    model_type = model
+    # model_type = model
 
-    os.makedirs("splits", exist_ok=True)
-    split_file_name = "splits/" + model_save_name
+    os.makedirs(split_save_folder, exist_ok=True)
+    split_file_name = split_save_folder + model_save_name + "_split"
 
-    model, train_loss = train(
+    model, train_losses, val_losses = train(
         model=model,
         dataset=trainable.dataset,
         task=trainable.task,
@@ -135,34 +136,40 @@ def train_and_validate(
         n_test=n_test,
         lr=lr,
         batch_size=batch_size,
-        writer=writer,
         split_file=split_file_name,
     )
-    # print("Last Training loss : ", train_loss[-1])
-    test_loss, predicted_labels = validate(
-        model,
-        model_type,
-        trainable.dataset,
-        trainable.task,
-        n_train=n_train,
-        n_test=n_test,
-        molecule=trainable.molecule,
-        split_file=split_file_name,
-    )
-    # print("Test loss : ", np.mean(test_loss))
+
+    # test_loss, predicted_labels = validate(
+    #     model,
+    #     model_type,
+    #     trainable.dataset,
+    #     trainable.task,
+    #     n_train=n_train,
+    #     n_test=n_test,
+    #     molecule=trainable.molecule,
+    #     split_file=split_file_name,
+    # )
 
     if return_model:
         # TODO maybe smarter
         model.writer = None
-        return train_loss, test_loss, model
-    elif return_labels_for_test_only:
-        return predicted_labels
+        return train_losses, val_losses, model
+    # elif return_labels_for_test_only:
+    #     return predicted_labels
     else:
-        return train_loss, test_loss
+        return train_losses, val_losses
 
 
-def validate(model, model_type, dataset, task, molecule, n_train, n_test, split_file):
-    # returns loss,predicted_labels
+def validate(
+    model,
+    model_type,
+    dataset,
+    task,
+    molecule,
+    n_train,
+    n_test,
+    split_file,
+):
     if model_type == Model.baseline:
         if task == Task.energy:
             return validate_baseline_energy(model, dataset, n_train, n_test, molecule)
