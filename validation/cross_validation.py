@@ -144,14 +144,14 @@ def create_arg_parser():
     parser.add_argument(
         "--batch_size",
         type=positive_int,
-        default=32,
+        default=512,
         help="Batch size for training (default: 32)",
     )
 
     parser.add_argument(
         "--n_train",
         type=positive_int,
-        default=1000,
+        default=4000,
         help="Number of training samples (default: 100000)",
     )
 
