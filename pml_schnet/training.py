@@ -4,6 +4,7 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
 
+from model import SchNet
 from pml_schnet.data_loader import load_data
 from pml_schnet.loss import derive_force, energy_force_loss
 from pml_schnet.settings import device
@@ -207,7 +208,7 @@ def train_schnet_energy(
 
 
 def train_schnet_energy_force(
-    model_obj,
+    model_obj: SchNet,
     n_train,
     n_test,
     lr,
@@ -241,6 +242,10 @@ def train_schnet_energy_force(
                 X_batch["R"].requires_grad_()
                 F = X_batch["F"].to(device)
 
+                # Only for the first epoch
+                if epoch == 0 and model_obj.running_mean_var:
+                    model_obj.update_mean_var(y_batch, X_batch["F"])
+
                 # Forward pass
                 E_pred = model_obj(X_batch)
                 loss = criterion(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
@@ -259,6 +264,71 @@ def train_schnet_energy_force(
 
             # End of Epoch
             val_loss, _ = validate_schnet_force_energy(model_obj, test_gen)
+            val_losses.append(val_loss)
+            progress_bar.update(1)
+    return np.array(losses), np.array(val_losses)
+
+
+def train_schnet_energy_force_mem(
+    model: SchNet,
+    n_train,
+    n_test,
+    lr,
+    epochs,
+    dataset,
+    batch_size,
+    molecule,
+    split_file=None,
+    scheduler_step_size=100_000,
+):
+    # writer = model_obj.writer
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
+    steps = 0
+    criterion = energy_force_loss
+    losses = []
+    val_losses = []
+
+    train_set, test_set = load_data(
+        dataset,
+        n_train,
+        n_test,
+        batch_size=batch_size,
+        split_file=split_file,
+        molecule=molecule,
+        keep_in_memory=True,
+        cache_pickle=True,
+    )
+    with tqdm(total=epochs, ncols=80) as progress_bar:
+        progress_bar.set_description("Schnet E+F")
+        for epoch in range(epochs):
+            for X_batch, y_batch in train_set:
+                # Forward pass
+                X_batch["R"].requires_grad_()
+                F = X_batch["F"].to(device)
+
+                # Only for the first epoch
+                if epoch == 0 and model.running_mean_var:
+                    model.update_mean_var(y_batch, X_batch["F"])
+
+                # Forward pass
+                E_pred = model(X_batch)
+                loss = criterion(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
+                losses.append(loss.item())
+
+                # Backward pass and optimization
+                optimizer.zero_grad()  # Clear gradients
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+
+                update_pbar_desc(loss, progress_bar, steps)
+                steps += 1
+                if steps == scheduler_step_size:
+                    scheduler.step()
+                    steps = 0
+
+            # End of Epoch
+            val_loss, _ = validate_schnet_force_energy(model, test_set)
             val_losses.append(val_loss)
             progress_bar.update(1)
     return np.array(losses), np.array(val_losses)

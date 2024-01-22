@@ -61,6 +61,7 @@ class SchNet(nn.Module):
         n_rbf=300,
         activation: nn.Module = ShiftedSoftPlus,
         writer=None,
+        running_mean_var=True,
     ):
         """
         # Molecular representation NOTES
@@ -97,6 +98,13 @@ class SchNet(nn.Module):
             nn.Linear(32, 1),
         )
         self.pairwise = PairwiseDistances()
+
+        self.running_mean_var = running_mean_var
+        if running_mean_var:
+            from welford_torch import Welford
+
+            self.welford_E = Welford()
+            self.welford_F = Welford()
 
     def forward(self, inputs: Dict):
         Z = inputs["Z"]  # Atomic numbers
@@ -137,3 +145,27 @@ class SchNet(nn.Module):
         predicted_energies = torch.stack([p.sum() for p in atom_partitions])
         self.time_step += 1
         return predicted_energies
+
+    def update_mean_var(self, E, F):
+        self.welford_E.add_all(E.view(-1, 1))
+        self.welford_F.add_all(F)
+
+    def get_mean(self):
+        if self.running_mean_var:
+            return self.welford_E.mean(), self.welford_F.mean()
+        else:
+            raise ValueError("Mean and Var are not tracked.")
+
+    def get_var(self):
+        if self.running_mean_var:
+            return self.welford_E.var_s(), self.welford_F.var_s()
+        else:
+            raise ValueError("Mean and Var are not tracked.")
+
+    def get_std(self):
+        if self.running_mean_var:
+            return torch.sqrt(self.welford_E.var_s()), torch.sqrt(
+                self.welford_F.var_s()
+            )
+        else:
+            raise ValueError("Mean and Var are not tracked.")

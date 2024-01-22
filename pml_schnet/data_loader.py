@@ -1,6 +1,6 @@
 import os
+import pickle
 
-import numpy as np
 from schnetpack import properties
 from schnetpack.datasets import ISO17, QM9, MD17
 from schnetpack.transform import ASENeighborList
@@ -44,7 +44,29 @@ def load_data(
     iso17_fold="reference",
     cache_dir=settings.cache_dir,
     split_file=None,
+    keep_in_memory=False,
+    cache_pickle=False,
 ):
+    """
+    Load data from the specified dataset with the given parameters and settings.
+
+    Args:
+        dataset (str): The name of the dataset to load.
+        n_train (int): The number of training samples to load.
+        n_test (int): The number of test samples to load.
+        batch_size (int): The batch size for loading the data.
+        molecule (str): The name of the molecule to load (default: "aspirin").
+        log (bool): Whether to log information during data loading (default: False).
+        iso17_fold (str): The fold for ISO17 dataset (default: "reference").
+        cache_dir (str): The directory to cache the data (default: settings.cache_dir).
+        split_file (str): The file to use for data splitting (default: None).
+        keep_in_memory (bool): Whether to keep the loaded data in memory (default: False).
+        cache_pickle (bool): Whether to cache the data using pickle (default: False).
+
+    Returns:
+        tuple or generator: Depending on the settings, returns a tuple or generator
+        containing the loaded training and test data.
+    """
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
 
@@ -107,4 +129,33 @@ def load_data(
 
         for p in data.dataset.available_properties:
             print("-", p)
-    return get_generator(train, dataset), get_generator(test, dataset)
+
+    if keep_in_memory:
+        print("Keeping data in memory...")
+        train_pkl = f"{dataset}_train.pkl"
+        train_path = os.path.join(cache_dir, train_pkl)
+        test_pkl = f"{dataset}_test.pkl"
+        test_path = os.path.join(cache_dir, test_pkl)
+        if cache_pickle:
+            if os.path.exists(train_path) and os.path.exists(test_path):
+                print("Loading data from cache...")
+                with open(train_path, "rb") as f:
+                    train_set = pickle.load(f)
+                with open(test_path, "rb") as f:
+                    test_set = pickle.load(f)
+            else:
+                print("Caching data as pickle...")
+                train_set, test_set = list(get_generator(train, dataset)), list(
+                    get_generator(test, dataset)
+                )
+                with open(train_path, "wb") as f:
+                    pickle.dump(train_set, f)
+                with open(test_path, "wb") as f:
+                    pickle.dump(test_set, f)
+        else:
+            train_set, test_set = list(get_generator(train, dataset)), list(
+                get_generator(test, dataset)
+            )
+        return train_set, test_set
+    else:
+        return get_generator(train, dataset), get_generator(test, dataset)

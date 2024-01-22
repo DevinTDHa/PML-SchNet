@@ -1,0 +1,41 @@
+import shutil
+
+import numpy as np
+import torch
+
+from model import SchNet
+from settings import device
+from training import train_schnet_energy_force_mem
+
+
+def save_model(model, path):
+    torch.save(model, path + ".pt")
+
+
+if __name__ == "__main__":
+    model = SchNet(running_mean_var=True).to(device)
+
+    total_data = 404  # _000
+    n_train = int(total_data * 0.9)
+    n_test = int(total_data * 0.1)
+    lr = 1e-3
+
+    batch_size = 32
+    epochs = 1  # 30  # 200 epochs -> 19 hours
+
+    shutil.rmtree("iso17_confidence_split", ignore_errors=True)
+    losses, val_losses = train_schnet_energy_force_mem(
+        model=model,
+        n_train=n_train,
+        n_test=n_test,
+        lr=lr,
+        epochs=epochs,
+        dataset="ISO17",
+        batch_size=batch_size,
+        molecule="NA",
+        split_file="iso17_confidence_split",
+    )
+
+    save_model(model.to("cpu"), "iso17_confidence_model")
+    np.savetxt("iso17_confidence_train_losses.txt", losses)
+    np.savetxt("iso17_confidence_val_losses.txt", val_losses)
