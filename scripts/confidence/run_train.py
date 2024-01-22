@@ -3,9 +3,9 @@ import shutil
 import numpy as np
 import torch
 
-from model import SchNet
-from settings import device
-from training import train_schnet_energy_force_mem
+from pml_schnet.model import SchNet
+from pml_schnet.settings import device
+from pml_schnet.training import train_schnet_energy_force_mem
 
 
 def save_model(model, path):
