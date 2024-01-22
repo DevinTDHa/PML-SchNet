@@ -13,6 +13,7 @@ def save_model(model, path):
 
 
 if __name__ == "__main__":
+    print("Running on device", device)
     model = SchNet(running_mean_var=True).to(device)
 
     total_data = 404_000
