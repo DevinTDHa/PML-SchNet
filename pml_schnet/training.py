@@ -6,7 +6,7 @@ from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
 
-from model import SchNet
+from pml_schnet.model import SchNet
 from pml_schnet.data_loader import load_data
 from pml_schnet.loss import derive_force, energy_force_loss
 from pml_schnet.settings import device
