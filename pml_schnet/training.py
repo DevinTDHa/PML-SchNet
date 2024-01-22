@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import torch
 from torch import nn
@@ -280,14 +282,17 @@ def train_schnet_energy_force_mem(
     molecule,
     split_file=None,
     scheduler_step_size=100_000,
+    save_checkpoint=True,
 ):
-    # writer = model_obj.writer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
     steps = 0
     criterion = energy_force_loss
     losses = []
     val_losses = []
+
+    if save_checkpoint:
+        os.makedirs("checkpoints", exist_ok=True)
 
     train_set, test_set = load_data(
         dataset,
@@ -299,6 +304,8 @@ def train_schnet_energy_force_mem(
         keep_in_memory=True,
         cache_pickle=True,
     )
+
+    lowest_loss = np.inf
     with tqdm(total=epochs, ncols=80) as progress_bar:
         progress_bar.set_description("Schnet E+F")
         for epoch in range(epochs):
@@ -330,6 +337,16 @@ def train_schnet_energy_force_mem(
             # End of Epoch
             val_loss, _ = validate_schnet_force_energy(model, test_set)
             val_losses.append(val_loss)
+
+            if val_loss < lowest_loss:
+                lowest_loss = val_loss
+                if save_checkpoint:
+                    print("Saving checkpoint for loss: ", lowest_loss, epoch)
+                    torch.save(
+                        model,
+                        f"checkpoints/schnet_ef_chkp_l{int(val_loss)}_e{epoch}.pt",
+                    )
+
             progress_bar.update(1)
     return np.array(losses), np.array(val_losses)
 
