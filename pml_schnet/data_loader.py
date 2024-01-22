@@ -131,10 +131,10 @@ def load_data(
             print("-", p)
 
     if keep_in_memory:
-        print("Keeping data in memory...")
-        train_pkl = f"{dataset}_train.pkl"
+        print("Loading data into memory...")
+        train_pkl = f"{dataset}_{str(split_file)}_train.pkl"
         train_path = os.path.join(cache_dir, train_pkl)
-        test_pkl = f"{dataset}_test.pkl"
+        test_pkl = f"{dataset}_{str(split_file)}_test.pkl"
         test_path = os.path.join(cache_dir, test_pkl)
         if cache_pickle:
             if os.path.exists(train_path) and os.path.exists(test_path):
@@ -144,10 +144,10 @@ def load_data(
                 with open(test_path, "rb") as f:
                     test_set = pickle.load(f)
             else:
-                print("Caching data as pickle...")
                 train_set, test_set = list(get_generator(train, dataset)), list(
                     get_generator(test, dataset)
                 )
+                print("Caching data as pickle.")
                 with open(train_path, "wb") as f:
                     pickle.dump(train_set, f)
                 with open(test_path, "wb") as f:
