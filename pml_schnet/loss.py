@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 
 
 def derive_force(E_pred, R):
@@ -27,3 +28,21 @@ def energy_force_loss(E_pred, R, E, F, return_force_labels=False):
         return mean_total_dist, dEdR
     else:
         return mean_total_dist
+
+
+def energy_force_loss_mae(E_pred, R, E, F, return_force_labels=False):
+    loss = nn.L1Loss()
+    loss_E = loss(E_pred, E)
+    batch_size = len(E_pred)
+
+    dEdR = derive_force(E_pred, R)
+    dEdR.requires_grad_()
+
+    F = F.view(batch_size, -1, 3)
+    F_pred = dEdR.view(batch_size, -1, 3)
+    loss_F = loss(F_pred, F)
+    total_loss = loss_E + loss_F
+    if return_force_labels:
+        return total_loss, F_pred
+    else:
+        return total_loss

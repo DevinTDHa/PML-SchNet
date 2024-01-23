@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from pml_schnet.model import SchNet
 from pml_schnet.data_loader import load_data
-from pml_schnet.loss import derive_force, energy_force_loss
+from pml_schnet.loss import derive_force, energy_force_loss, energy_force_loss_mae
 from pml_schnet.settings import device
 from pml_schnet.visualization.plotting import plot_loss
 
@@ -66,6 +66,26 @@ def validate_schnet_force_energy(model, test_gen):
         # Forward pass
         E_pred = model(X_batch)
         loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
+        E_pred.detach()
+        loss.detach()
+        labels.append(E_pred.detach().to("cpu"))
+
+        val_loss.append(loss.item())
+
+    return np.mean(val_loss), labels
+
+
+def validate_schnet_force_energy_mae(model, test_gen):
+    val_loss = []
+    labels = []
+    for X_batch, y_batch in test_gen:
+        # Forward pass
+        X_batch["R"].requires_grad_()
+        F = X_batch["F"].to(device)
+
+        # Forward pass
+        E_pred = model(X_batch)
+        loss = energy_force_loss_mae(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
         E_pred.detach()
         loss.detach()
         labels.append(E_pred.detach().to("cpu"))
