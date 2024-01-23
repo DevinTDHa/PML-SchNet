@@ -169,6 +169,35 @@ class SchNet(nn.Module):
         else:
             raise ValueError("Mean and Var are not tracked.")
 
+    def predict(self, x):
+        """
+        Perform prediction on the input data and calculate z-scores for energy and force predictions for a
+        confidence measure.
+
+        Parameters
+        ----------
+        x : dict
+            Input data dictionary for inference
+
+        Returns
+        -------
+        Tuple
+            Predicted energy and force, and z-scores for energy and force
+        """
+        x["R"].requires_grad_()
+        pred_E = self.forward(x)
+        pred_F = derive_force(pred_E, x["R"])
+
+        mean_E, mean_F = self.get_mean()
+        var_E, var_F = self.get_var()
+
+        batch_size = len(x["N"])
+        z_score_E = (mean_E - pred_E).abs() / torch.sqrt(var_E)
+        z_score_F = (mean_F - pred_F).abs() / torch.sqrt(var_F)
+        z_score_F = z_score_F.view(batch_size, -1, 3)
+
+        return (pred_E, pred_F), (z_score_E, z_score_F)
+
 
 class SchNetRegularized(SchNet):
     def __init__(
