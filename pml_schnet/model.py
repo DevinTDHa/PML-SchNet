@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from pml_schnet.activation import ShiftedSoftPlus
-from pml_schnet.layers import SchNetInteraction
+from pml_schnet.layers import SchNetInteraction, SchNetInteractionReg
 
 
 class PairwiseDistances(nn.Module):
@@ -107,6 +107,7 @@ class SchNet(nn.Module):
             self.welford_F = Welford()
 
     def forward(self, inputs: Dict):
+        # TODO: Make forward work without a dict, use kwargs instead
         Z = inputs["Z"]  # Atomic numbers
 
         N = inputs["N"]  # Number of atoms in each molecule
@@ -152,20 +153,61 @@ class SchNet(nn.Module):
 
     def get_mean(self):
         if self.running_mean_var:
-            return self.welford_E.mean(), self.welford_F.mean()
+            return self.welford_E.mean, self.welford_F.mean
         else:
             raise ValueError("Mean and Var are not tracked.")
 
     def get_var(self):
         if self.running_mean_var:
-            return self.welford_E.var_s(), self.welford_F.var_s()
+            return self.welford_E.var_s, self.welford_F.var_s
         else:
             raise ValueError("Mean and Var are not tracked.")
 
     def get_std(self):
         if self.running_mean_var:
-            return torch.sqrt(self.welford_E.var_s()), torch.sqrt(
-                self.welford_F.var_s()
-            )
+            return torch.sqrt(self.welford_E.var_s), torch.sqrt(self.welford_F.var_s)
         else:
             raise ValueError("Mean and Var are not tracked.")
+
+
+class SchNetRegularized(SchNet):
+    def __init__(
+        self,
+        atom_embedding_dim=64,
+        n_interactions=3,
+        max_z=100,
+        rbf_min=0.0,
+        rbf_max=30.0,
+        n_rbf=300,
+        activation: nn.Module = ShiftedSoftPlus,
+        running_mean_var=True,
+    ):
+        super().__init__()
+        self.time_step = 0
+        # self.writer = writer
+        self.max_z = max_z
+        self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
+
+        self.interactions = nn.ModuleList(
+            [
+                SchNetInteractionReg(
+                    atom_embedding_dim, rbf_min, rbf_max, n_rbf, activation
+                )
+                for _ in range(n_interactions)
+            ]
+        )
+
+        self.output_layers = nn.Sequential(
+            nn.Linear(atom_embedding_dim, 32, bias=False),
+            nn.BatchNorm1d(32),
+            activation(),
+            nn.Linear(32, 1),
+        )
+        self.pairwise = PairwiseDistances()
+
+        self.running_mean_var = running_mean_var
+        if running_mean_var:
+            from welford_torch import Welford
+
+            self.welford_E = Welford()
+            self.welford_F = Welford()
