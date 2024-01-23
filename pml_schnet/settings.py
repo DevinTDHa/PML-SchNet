@@ -2,7 +2,13 @@ from dataclasses import dataclass
 
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    _device_string = "cuda"
+elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    _device_string = "mps"
+else:
+    _device_string = "cpu"
+device = torch.device(_device_string)
 
 
 class Task:
@@ -49,7 +55,6 @@ valid_molecules = {
 }
 
 
-
 md17_trainable_all = (
     [Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules]
     + [Trainable(Dataset.md17, Task.force, m) for m in valid_molecules]
@@ -85,4 +90,6 @@ train_modes = {
 
 # cache_dir = "./" if on_dev_machine() else : "/home/space/datasets/schnet"
 
-cache_dir = "./"
+# cache_dir = "./"
+# cache_dir = "/home/ducha/Workspace/Data/PML"
+cache_dir = "/Users/ducha/Uni-Local/PML"

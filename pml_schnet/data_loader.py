@@ -17,14 +17,14 @@ def data_to_dic(x, dataset):
     inputs = {
         "Z": x[properties.Z].to(device),  # nuclear charge, `Z` is `_atomic_numbers`
         "R": x[properties.position]
-        .to(device)
-        .float(),  # atomic positions `R` is `_positions`
+        .float()
+        .to(device),  # atomic positions `R` is `_positions`
         "N": x[properties.n_atoms].tolist(),  # Number of atoms
         "idx_i": x[properties.idx_i].to(device),  # Index of first atom for distance
         "idx_j": x[properties.idx_j].to(device),  # Index of second atom for distance
     }
     if dataset != "QM9":
-        inputs["F"] = x[force_label[dataset]].to(device)
+        inputs["F"] = x[force_label[dataset]].float().to(device)
 
     return inputs
 
