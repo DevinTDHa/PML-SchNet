@@ -132,9 +132,9 @@ def load_data(
 
     if keep_in_memory:
         print("Loading data into memory...")
-        train_pkl = f"{dataset}_{str(split_file)}_train.pkl"
+        train_pkl = f"{dataset}_train.pkl"
         train_path = os.path.join(cache_dir, train_pkl)
-        test_pkl = f"{dataset}_{str(split_file)}_test.pkl"
+        test_pkl = f"{dataset}_test.pkl"
         test_path = os.path.join(cache_dir, test_pkl)
         if cache_pickle:
             if os.path.exists(train_path) and os.path.exists(test_path):

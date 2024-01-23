@@ -25,9 +25,8 @@ if __name__ == "__main__":
     epochs = 200
 
     shutil.rmtree("iso17_reg_split.npz", ignore_errors=True)
-    # losses, val_losses = train_schnet_energy_force_mem(
-    losses, val_losses = train_schnet_energy_force(
-        model_obj=model,
+    losses, val_losses = train_schnet_energy_force_mem(
+        model=model,
         n_train=n_train,
         n_test=n_test,
         lr=lr,
