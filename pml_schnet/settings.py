@@ -90,6 +90,4 @@ train_modes = {
 
 # cache_dir = "./" if on_dev_machine() else : "/home/space/datasets/schnet"
 
-# cache_dir = "./"
-# cache_dir = "/home/ducha/Workspace/Data/PML"
-cache_dir = "/Users/ducha/Uni-Local/PML"
+cache_dir = "./"
