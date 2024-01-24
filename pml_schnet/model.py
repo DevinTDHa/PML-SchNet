@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from pml_schnet.activation import ShiftedSoftPlus
-from pml_schnet.layers import SchNetInteraction, SchNetInteractionReg
+from pml_schnet.layers import SchNetInteraction, SchNetInteractionDropout
 
 
 class PairwiseDistances(nn.Module):
@@ -199,7 +199,7 @@ class SchNet(nn.Module):
         return (pred_E, pred_F), (z_score_E, z_score_F)
 
 
-class SchNetRegularized(SchNet):
+class SchNetBatchNorm(SchNet):
     def __init__(
         self,
         atom_embedding_dim=64,
@@ -219,7 +219,7 @@ class SchNetRegularized(SchNet):
 
         self.interactions = nn.ModuleList(
             [
-                SchNetInteractionReg(
+                SchNetInteractionDropout(
                     atom_embedding_dim, rbf_min, rbf_max, n_rbf, activation
                 )
                 for _ in range(n_interactions)
@@ -229,6 +229,49 @@ class SchNetRegularized(SchNet):
         self.output_layers = nn.Sequential(
             nn.Linear(atom_embedding_dim, 32, bias=False),
             nn.BatchNorm1d(32),
+            activation(),
+            nn.Linear(32, 1),
+        )
+        self.pairwise = PairwiseDistances()
+
+        self.running_mean_var = running_mean_var
+        if running_mean_var:
+            from welford_torch import Welford
+
+            self.welford_E = Welford()
+            self.welford_F = Welford()
+
+
+class SchNetDropout(SchNet):
+    def __init__(
+        self,
+        atom_embedding_dim=64,
+        n_interactions=3,
+        max_z=100,
+        rbf_min=0.0,
+        rbf_max=30.0,
+        n_rbf=300,
+        activation: nn.Module = ShiftedSoftPlus,
+        running_mean_var=True,
+    ):
+        super().__init__()
+        self.time_step = 0
+        # self.writer = writer
+        self.max_z = max_z
+        self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
+
+        self.interactions = nn.ModuleList(
+            [
+                SchNetInteractionDropout(
+                    atom_embedding_dim, rbf_min, rbf_max, n_rbf, activation
+                )
+                for _ in range(n_interactions)
+            ]
+        )
+
+        self.output_layers = nn.Sequential(
+            nn.Linear(atom_embedding_dim, 32, bias=False),
+            nn.Dropout(),
             activation(),
             nn.Linear(32, 1),
         )

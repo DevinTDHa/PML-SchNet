@@ -76,6 +76,7 @@ def validate_schnet_force(model, test_gen, criterion):
 
 
 def validate_schnet_force_energy(model, test_gen):
+    model.eval()
     val_loss = []
     labels = []
     for X_batch, y_batch in test_gen:
@@ -92,6 +93,7 @@ def validate_schnet_force_energy(model, test_gen):
 
         val_loss.append(loss.item())
 
+    model.train()
     return np.mean(val_loss), labels
 
 
@@ -364,7 +366,7 @@ def train_schnet_energy_force_mem(
                     print("Saving checkpoint for loss: ", lowest_loss, epoch)
                     torch.save(
                         model,
-                        f"checkpoints/schnet_ef_chkp_l{int(val_loss)}_e{epoch}.pt",
+                        f"checkpoints/schnet_ef_chkp_l{val_loss:.4f}_e{epoch}.pt",
                     )
 
             progress_bar.update(1)
