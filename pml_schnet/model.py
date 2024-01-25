@@ -3,7 +3,7 @@ from typing import Dict
 import torch
 from torch import nn
 
-from loss import derive_force
+from pml_schnet.loss import derive_force
 from pml_schnet.activation import ShiftedSoftPlus
 from pml_schnet.layers import (
     SchNetInteraction,
