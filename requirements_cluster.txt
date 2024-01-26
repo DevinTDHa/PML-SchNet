@@ -12,3 +12,4 @@ matplotlib
 torchvision
 lightning
 welford-torch
+pytorch[tune]
