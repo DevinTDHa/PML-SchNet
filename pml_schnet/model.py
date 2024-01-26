@@ -32,6 +32,13 @@ class PairwiseDistances(nn.Module):
 
         return d_ij
 
+    @staticmethod
+    def forward_sep(R, idx_i, idx_j) -> torch.Tensor:
+        Rij = R[idx_i] - R[idx_j]
+        d_ij = torch.norm(Rij, dim=-1)
+
+        return d_ij
+
 
 class BaselineModel(nn.Module):
     def __init__(self, max_atoms=100, embedding_dim=8, spatial_dim=16):
@@ -113,7 +120,6 @@ class SchNet(nn.Module):
             self.welford_F = Welford()
 
     def forward(self, inputs: Dict):
-        # TODO: Make forward work without a dict, use kwargs instead
         Z = inputs["Z"]  # Atomic numbers
 
         N = inputs["N"]  # Number of atoms in each molecule
@@ -135,6 +141,34 @@ class SchNet(nn.Module):
             #         f"interaction_{i}", X_interacted, self.time_step
             #     )
             # self.writer.add_scalar(f'Gradient_norm/{name}', param.grad.norm(), epoch)
+
+        # 5) atom-wise 32
+        # 6) Shifted Softplus
+        # 7) atom-wise 1
+        atom_outputs = self.output_layers(X_interacted)
+        # if self.writer:
+        #     self.writer.add_histogram(f"atom_outputs", atom_outputs, self.time_step)
+
+        # Assign Flattened Atoms Back to Molecules
+        atom_partitions = torch.split(
+            atom_outputs, N.tolist() if isinstance(N, torch.Tensor) else N
+        )
+
+        # 8) Sum Pooling
+        predicted_energies = torch.stack([p.sum() for p in atom_partitions])
+        self.time_step += 1
+        return predicted_energies
+
+    def forward_sep(self, embed_Z, R, N, idx_i, idx_j):
+        R_distances = self.pairwise.forward_sep(R, idx_i, idx_j)
+
+        # 1) Embedding 64 (See section Molecular representation).
+        X = embed_Z
+
+        # 2),3),4) each Interaction 64 with residual layers
+        X_interacted = X
+        for i, interaction in enumerate(self.interactions):
+            X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)
 
         # 5) atom-wise 32
         # 6) Shifted Softplus
@@ -203,6 +237,40 @@ class SchNet(nn.Module):
         z_score_F = z_score_F.view(batch_size, -1, 3)
 
         return (pred_E, pred_F), (z_score_E, z_score_F)
+
+    def explain(self, x):
+        """
+        Explain the given input x. We use the sensitivity as a measure of feature importance. The atom positions R and
+        the embeddings of the atom numbers Z are explained.
+
+        Parameters
+        ----------
+        x : dict
+            A dictionary containing keys "Z", "R", "N", "idx_i", and "idx_j".
+
+        Returns
+        -------
+        tuple
+            A tuple containing the sensitivity of embedding Z and R.
+        """
+        Z = x["Z"]
+        R = x["R"]
+        N = x["N"]
+        idx_i = x["idx_i"]
+        idx_j = x["idx_j"]
+
+        embed_Z = self.embedding(Z)
+        embed_Z.requires_grad_()
+        R.requires_grad_()
+
+        embed_Z = self.embedding(Z)
+        output = self.forward_sep(embed_Z, R, N, idx_i, idx_j)
+
+        embed_Z_grad, R_grad = torch.autograd.grad(output, [embed_Z, R])
+        embed_Z_sensitivity, R_sensitivity = embed_Z_grad.pow(2).norm(
+            axis=1
+        ), R_grad.pow(2)
+        return embed_Z_sensitivity, R_sensitivity
 
 
 class SchNetBatchNorm(SchNet):
