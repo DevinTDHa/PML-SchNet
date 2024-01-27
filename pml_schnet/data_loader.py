@@ -15,23 +15,21 @@ force_label = {"QM9": None, "MD17": "forces", "ISO17": "atomic_forces"}
 
 def data_to_dic(x, dataset):
     inputs = {
-        "Z": x[properties.Z].to(device),  # nuclear charge, `Z` is `_atomic_numbers`
-        "R": x[properties.position]
-        .float()
-        .to(device),  # atomic positions `R` is `_positions`
+        "Z": x[properties.Z],  # nuclear charge, `Z` is `_atomic_numbers`
+        "R": x[properties.position].float(),  # atomic positions `R` is `_positions`
         "N": x[properties.n_atoms].tolist(),  # Number of atoms
-        "idx_i": x[properties.idx_i].to(device),  # Index of first atom for distance
-        "idx_j": x[properties.idx_j].to(device),  # Index of second atom for distance
+        "idx_i": x[properties.idx_i],  # Index of first atom for distance
+        "idx_j": x[properties.idx_j],  # Index of second atom for distance
     }
     if dataset != "QM9":
-        inputs["F"] = x[force_label[dataset]].float().to(device)
+        inputs["F"] = x[force_label[dataset]].float()
 
     return inputs
 
 
 def get_generator(base_gen, dataset):
     for x in base_gen:
-        yield data_to_dic(x, dataset), x[energy_label[dataset]].float().to(device)
+        yield data_to_dic(x, dataset), x[energy_label[dataset]].float()
 
 
 def load_data(

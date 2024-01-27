@@ -2,13 +2,18 @@ from dataclasses import dataclass
 
 import torch
 
-if torch.cuda.is_available():
-    _device_string = "cuda"
-elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
-    _device_string = "mps"
-else:
-    _device_string = "cpu"
-device = torch.device(_device_string)
+
+def get_device():
+    if torch.cuda.is_available():
+        _device_string = "cuda"
+    elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        _device_string = "mps"
+    else:
+        _device_string = "cpu"
+    return torch.device(_device_string)
+
+
+device = get_device()
 
 
 class Task:
@@ -90,6 +95,4 @@ train_modes = {
 
 # cache_dir = "./" if on_dev_machine() else : "/home/space/datasets/schnet"
 
-# cache_dir = "./"
-
-cache_dir = "/media/ckl/dump1/Documents/uni/WS_23_24/pml/pml_code"
+cache_dir = "./"
