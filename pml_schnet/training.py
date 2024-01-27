@@ -373,6 +373,75 @@ def train_schnet_energy_force_mem(
     return np.array(losses), np.array(val_losses)
 
 
+def train_schnet_energy_force_data_loaded(
+    train_set,
+    test_set,
+    model: SchNet,
+    lr,
+    epochs,
+    scheduler_step_size=100_000,
+    save_checkpoint=True,
+):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
+    steps = 0
+    criterion = energy_force_loss
+    losses = []
+    val_losses = []
+
+    if save_checkpoint:
+        os.makedirs("checkpoints", exist_ok=True)
+
+    lowest_loss = np.inf
+    with tqdm(total=epochs, ncols=80) as progress_bar:
+        progress_bar.set_description("Schnet E+F")
+        for epoch in range(epochs):
+            for X_batch, y_batch in train_set:
+                # Forward pass
+                X_batch["R"].requires_grad_()
+                F = X_batch["F"].to(device)
+
+                # Only for the first epoch
+                if epoch == 0 and model.running_mean_var:
+                    model.update_mean_var(y_batch, X_batch["F"])
+
+                # Forward pass
+                E_pred = model(X_batch)
+                loss = criterion(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
+                losses.append(loss.item())
+
+                # Backward pass and optimization
+                optimizer.zero_grad()  # Clear gradients
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update weights
+
+                update_pbar_desc(loss, progress_bar, steps)
+                steps += 1
+                if steps == scheduler_step_size:
+                    scheduler.step()
+                    steps = 0
+
+            # End of Epoch
+            val_loss, _ = validate_schnet_force_energy(model, test_set)
+            val_losses.append(val_loss)
+            # Log all loss values for the current epoch
+            # ray.train.report(dict(LOSS=losses[0], epoch=epoch))
+            # ray.train.report({val_loss: val_loss, epoch: epoch})
+            # reporter(test_loss=val_loss, epoch=epoch)
+
+            if val_loss < lowest_loss:
+                lowest_loss = val_loss
+                if save_checkpoint:
+                    print("Saving checkpoint for loss: ", lowest_loss, epoch)
+                    torch.save(
+                        model,
+                        f"checkpoints/schnet_ef_chkp_l{val_loss:.4f}_e{epoch}.pt",
+                    )
+
+            progress_bar.update(1)
+    return np.array(losses), np.array(val_losses)
+
+
 def train_schnet_force(
     model_obj,
     n_train,
