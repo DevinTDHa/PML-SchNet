@@ -85,7 +85,9 @@ if __name__ == "__main__":
             save_checkpoint=False,
         )
 
-        logs_dir = f"/media/ckl/dump1/Documents/uni/WS_23_24/pml/pml_code/ms3_hyperparam/{run_name}"
+        # logs_dir = f"/media/ckl/dump1/Documents/uni/WS_23_24/pml/pml_code/ms3_hyperparam/{run_name}"
+        logs_dir = f'/home/pml00/MS3_hyperparameter/ms3_hyperparam/{run_name}'
+
         print("torch logs in, ", logs_dir)
         if not os.path.exists(logs_dir):
             os.makedirs(logs_dir)
@@ -112,9 +114,10 @@ if __name__ == "__main__":
         "activation": tune.choice(["ShiftedSoftPlus", "LeakyReLU", "GELU"]),
         "run_name": tune.choice([run_name]),
     }
-    ray_logs_dir = (
-        f"/media/ckl/dump1/Documents/uni/WS_23_24/pml/pml_code/ray_out/{run_name}"
-    )
+    # ray_logs_dir = (
+    #     f"/media/ckl/dump1/Documents/uni/WS_23_24/pml/pml_code/ray_out/{run_name}"
+    # )
+    ray_logs_dir = f'/home/pml00/MS3_hyperparameter/ray_out/{run_name}'
     print("ray logs in", ray_logs_dir)
     if not os.path.exists(ray_logs_dir):
         os.makedirs(ray_logs_dir)
