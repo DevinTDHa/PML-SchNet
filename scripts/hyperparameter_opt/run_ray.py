@@ -39,8 +39,8 @@ if __name__ == "__main__":
 
     cwd = os.getcwd()
     print("Current working directory is", cwd)
-    # run_name = "hyperparam_gridsearch"
-    run_name = "hyperparam_no_scheduler"
+    run_name = "hyperparam_gridsearch"
+    # run_name = "hyperparam_no_scheduler"
 
     # num_samples = 300
     # print(f"Number of samplings: {num_samples}")
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         "activation": tune.grid_search(["ShiftedSoftPlus", "LeakyReLU", "GELU"]),
     }
 
-    objective_with_resources = tune.with_resources(objective, {"cpu": 1, "gpu": 0.1})
+    objective_with_resources = tune.with_resources(objective, {"cpu": 2, "gpu": 0.1})
     analysis = tune.run(
         tune.with_parameters(objective_with_resources, data=(train_set, test_set)),
         config=config,
