@@ -46,6 +46,7 @@ if __name__ == "__main__":
     # print(f"Number of samplings: {num_samples}")
 
     logs_dir = f"{cwd}/ms3_hyperparam/{run_name}"
+    print("torch logs in, ", logs_dir)
     if not os.path.exists(logs_dir):
         os.mkdir(logs_dir)
 
@@ -87,9 +88,6 @@ if __name__ == "__main__":
             save_checkpoint=False,
         )
 
-        print("torch logs in, ", logs_dir)
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
         save_model(model, f"{logs_dir}/{identifier_string}")
         np.savetxt(f"{logs_dir}/train_iso17_losses_{identifier_string}.txt", losses)
         np.savetxt(f"{logs_dir}/val_iso17_losses_{identifier_string}.txt", val_losses)
@@ -120,14 +118,16 @@ if __name__ == "__main__":
         "activation": tune.grid_search(["ShiftedSoftPlus", "LeakyReLU", "GELU"]),
     }
 
-    objective_with_resources = tune.with_resources(objective, {"cpu": 1, "gpu": 1})
+    objective_with_resources = tune.with_resources(objective, {"cpu": 0.5, "gpu": 0.2})
     analysis = tune.run(
         tune.with_parameters(objective_with_resources, data=(train_set, test_set)),
         config=config,
         metric="validation_loss",
         mode="min",
-        # scheduler=ASHAScheduler(),
-        progress_reporter=CLIReporter(metric_columns=["validation_loss"]),
+        # scheduler=ASHAScheduler(max_t=10 * 60, grace_period=60),
+        progress_reporter=CLIReporter(
+            metric_columns=["validation_loss"], print_intermediate_tables=False
+        ),
         local_dir=ray_logs_dir,
         log_to_file=True,
         time_budget_s=datetime.timedelta(days=1.8),

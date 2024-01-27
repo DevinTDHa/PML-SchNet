@@ -430,20 +430,20 @@ def train_schnet_energy_force_hyperparam(
                 scheduler.step()
                 steps = 0
 
-            # End of Epoch
-            val_loss, _ = validate_schnet_force_energy(model, test_set)
-            val_losses.append(val_loss)
-            # Log all loss values for the current epoch
-            ray.train.report(metrics={"validation_loss": val_loss})
+        # End of Epoch
+        val_loss, _ = validate_schnet_force_energy(model, test_set)
+        val_losses.append(val_loss)
+        # Log all loss values for the current epoch
+        ray.train.report(metrics={"validation_loss": val_loss})
 
-            if val_loss < lowest_loss:
-                lowest_loss = val_loss
-                if save_checkpoint:
-                    print("Saving checkpoint for loss: ", lowest_loss, epoch)
-                    torch.save(
-                        model,
-                        f"checkpoints/schnet_ef_chkp_l{val_loss:.4f}_e{epoch}.pt",
-                    )
+        if val_loss < lowest_loss:
+            lowest_loss = val_loss
+            if save_checkpoint:
+                print("Saving checkpoint for loss: ", lowest_loss, epoch)
+                torch.save(
+                    model,
+                    f"checkpoints/schnet_ef_chkp_l{val_loss:.4f}_e{epoch}.pt",
+                )
 
     return np.array(losses), np.array(val_losses)
 
