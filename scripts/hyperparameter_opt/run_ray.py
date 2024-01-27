@@ -39,7 +39,8 @@ if __name__ == "__main__":
 
     cwd = os.getcwd()
     print("Current working directory is", cwd)
-    run_name = "hyperparam_gridsearch"
+    # run_name = "hyperparam_gridsearch"
+    run_name = "hyperparam_no_scheduler"
 
     # num_samples = 300
     # print(f"Number of samplings: {num_samples}")
@@ -125,7 +126,7 @@ if __name__ == "__main__":
         config=config,
         metric="validation_loss",
         mode="min",
-        scheduler=ASHAScheduler(),
+        # scheduler=ASHAScheduler(),
         progress_reporter=CLIReporter(metric_columns=["validation_loss"]),
         local_dir=ray_logs_dir,
         log_to_file=True,
