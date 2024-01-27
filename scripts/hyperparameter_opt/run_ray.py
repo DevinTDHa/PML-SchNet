@@ -45,6 +45,8 @@ if __name__ == "__main__":
     # print(f"Number of samplings: {num_samples}")
 
     logs_dir = f"{cwd}/ms3_hyperparam/{run_name}"
+    if not os.path.exists(logs_dir):
+        os.mkdir(logs_dir)
 
     def objective(config, data):
         atom_embedding_dim = int(config["atom_embedding_dim"])
