@@ -130,10 +130,9 @@ def load_data(
 
     if keep_in_memory:
         # Fix File descriptor limit, if keeping data in memory
-        import resource
+        import torch
 
-        rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-        resource.setrlimit(resource.RLIMIT_NOFILE, (2048, rlimit[1]))
+        torch.multiprocessing.set_sharing_strategy("file_system")
 
         print("Loading data into memory...")
         train_pkl = f"{dataset}_{n_train}_{n_test}_{batch_size}_train.pkl"
