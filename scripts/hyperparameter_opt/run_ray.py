@@ -118,19 +118,19 @@ if __name__ == "__main__":
         "activation": tune.grid_search(["ShiftedSoftPlus", "LeakyReLU", "GELU"]),
     }
 
-    objective_with_resources = tune.with_resources(objective, {"cpu": 0.5, "gpu": 0.2})
+    objective_with_resources = tune.with_resources(objective, {"cpu": 1, "gpu": 0.1})
     analysis = tune.run(
         tune.with_parameters(objective_with_resources, data=(train_set, test_set)),
         config=config,
         metric="validation_loss",
         mode="min",
-        # scheduler=ASHAScheduler(max_t=10 * 60, grace_period=60),
+        scheduler=ASHAScheduler(max_t=20 * 60, grace_period=60),
         progress_reporter=CLIReporter(
             metric_columns=["validation_loss"], print_intermediate_tables=False
         ),
         local_dir=ray_logs_dir,
         log_to_file=True,
-        time_budget_s=datetime.timedelta(days=1.8),
+        time_budget_s=datetime.timedelta(days=1.9),
     )
 
     analysis.dataframe().to_csv(f"{logs_dir}/{run_name}_analysis.csv")
