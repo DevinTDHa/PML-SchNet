@@ -7,7 +7,7 @@ from schnetpack.transform import ASENeighborList
 
 from pml_schnet import settings
 from pml_schnet.data_utils import fix_iso_17_db
-from pml_schnet.settings import valid_molecules, device
+from pml_schnet.settings import valid_molecules
 
 energy_label = {"QM9": "energy_U0", "ISO17": "total_energy", "MD17": "energy"}
 force_label = {"QM9": None, "MD17": "forces", "ISO17": "atomic_forces"}
@@ -129,11 +129,18 @@ def load_data(
             print("-", p)
 
     if keep_in_memory:
+        # Fix File descriptor limit, if keeping data in memory
+        import resource
+
+        rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (2048, rlimit[1]))
+
         print("Loading data into memory...")
         train_pkl = f"{dataset}_{n_train}_{n_test}_{batch_size}_train.pkl"
         train_path = os.path.join(cache_dir, train_pkl)
         test_pkl = f"{dataset}_{n_train}_{n_test}_{batch_size}_test.pkl"
         test_path = os.path.join(cache_dir, test_pkl)
+
         if cache_pickle:
             if os.path.exists(train_path) and os.path.exists(test_path):
                 print("Loading data from cache...")
