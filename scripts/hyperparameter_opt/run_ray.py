@@ -41,8 +41,8 @@ if __name__ == "__main__":
     print("Current working directory is", cwd)
     run_name = "hyperparam_gridsearch"
 
-    num_samples = 300
-    print(f"Number of samplings: {num_samples}")
+    # num_samples = 300
+    # print(f"Number of samplings: {num_samples}")
 
     logs_dir = f"{cwd}/ms3_hyperparam/{run_name}"
 
@@ -110,11 +110,11 @@ if __name__ == "__main__":
         os.makedirs(ray_logs_dir)
 
     config = {
-        "atom_embedding_dim": tune.choice([2**i for i in range(5, 9)]),
-        "n_interactions": tune.choice([2**i for i in range(1, 4)]),
-        "rbf_max": tune.choice([10 * i for i in range(2, 5)]),
-        "n_rbf": tune.choice([100 * 2**i for i in range(0, 3)]),
-        "activation": tune.choice(["ShiftedSoftPlus", "LeakyReLU", "GELU"]),
+        "atom_embedding_dim": tune.grid_search([2**i for i in range(5, 9)]),
+        "n_interactions": tune.grid_search([2**i for i in range(1, 4)]),
+        "rbf_max": tune.grid_search([10 * i for i in range(2, 5)]),
+        "n_rbf": tune.grid_search([100 * 2**i for i in range(0, 3)]),
+        "activation": tune.grid_search(["ShiftedSoftPlus", "LeakyReLU", "GELU"]),
     }
 
     objective_with_resources = tune.with_resources(objective, {"cpu": 1, "gpu": 1})
@@ -128,7 +128,6 @@ if __name__ == "__main__":
         local_dir=ray_logs_dir,
         log_to_file=True,
         time_budget_s=datetime.timedelta(days=1.8),
-        num_samples=num_samples,
     )
 
     analysis.dataframe().to_csv(f"{logs_dir}/{run_name}_analysis.csv")
