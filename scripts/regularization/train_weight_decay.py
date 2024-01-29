@@ -17,13 +17,12 @@ if __name__ == "__main__":
     model = SchNet(running_mean_var=True).to(device)
 
     total_data = 404_000
-    n_train = int(total_data * 0.5)
-    n_test = 1000
+    n_train = int(total_data * 0.9)
+    n_test = int(total_data * 0.1)
     lr = 1e-3
 
     batch_size = 32
-    # epochs = 30
-    epochs = 100
+    epochs = 150
 
     shutil.rmtree("iso17_weight_decay_split.npz", ignore_errors=True)
     losses, val_losses = train_schnet_energy_force_mem(
