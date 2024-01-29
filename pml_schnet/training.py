@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-import ray
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import ExponentialLR
@@ -12,6 +11,17 @@ from pml_schnet.loss import derive_force, energy_force_loss, energy_force_loss_m
 from pml_schnet.model import SchNet
 from pml_schnet.settings import device, get_device
 from pml_schnet.visualization.plotting import plot_loss
+
+
+def data_to_device(X_batch, y_batch):
+    X_batch["Z"] = X_batch["Z"].to(device)
+    X_batch["idx_i"] = X_batch["idx_i"].to(device)
+    X_batch["idx_j"] = X_batch["idx_j"].to(device)
+    X_batch["R"] = X_batch["R"].to(device)
+    X_batch["R"].to(device).requires_grad_()
+    X_batch["F"] = X_batch["F"].to(device)
+    y_batch = y_batch.to(device)
+    return X_batch, y_batch
 
 
 def write_grads(model, writer, epoch):
@@ -62,7 +72,7 @@ def validate_schnet_force(model, test_gen, criterion):
 #     for X_batch, y_batch in test_gen:
 #         # Forward pass
 #         X_batch["R"].requires_grad_()
-#         F = X_batch["F"].to(device)
+#         F = X_batch["F"]
 #
 #         # Forward pass
 #         E_pred = model(X_batch)
@@ -82,12 +92,8 @@ def validate_schnet_force_energy(model, test_gen, output_labels=False):
     labels = []
     for X_batch, y_batch in test_gen:
         # Forward pass
-        X_batch["Z"] = X_batch["Z"].to(device)
-        X_batch["idx_i"] = X_batch["idx_i"].to(device)
-        X_batch["idx_j"] = X_batch["idx_j"].to(device)
-        X_batch["R"] = X_batch["R"].to(device)
-        X_batch["R"].to(device).requires_grad_()
-        F = X_batch["F"].to(device)
+        X_batch, y_batch = data_to_device(X_batch, y_batch)
+        F = X_batch["F"]
         y_batch = y_batch.to(device)
 
         # Forward pass
@@ -140,7 +146,7 @@ def train_baseline_force(model, n_train, n_test, lr, epochs, dataset):
             X_batch["R"] = X_batch["R"].to(device)
             X_batch["R"].requires_grad_()
 
-            target_F = X_batch["F"].to(device)
+            target_F = X_batch["F"]
             target_F.requires_grad_()
 
             E_pred = model(X_batch)
@@ -171,7 +177,7 @@ def train_baseline_energy_force(model, n_train, n_test, lr, epochs, dataset):
             X_batch["R"] = X_batch["R"].to(device)
 
             X_batch["R"].requires_grad_()
-            F = X_batch["F"].to(device)
+            F = X_batch["F"]
             y_batch = y_batch.to(device)
             E_pred = model(X_batch)
             loss = energy_force_loss(E_pred=E_pred, R=X_batch["R"], E=y_batch, F=F)
@@ -204,7 +210,7 @@ def train_schnet_energy(
     criterion = nn.L1Loss()
     losses = []
     val_losses = []
-    with tqdm(total=epochs, ncols=80) as progress_bar:
+    with tqdm(total=epochs, ncols=100) as progress_bar:
         progress_bar.set_description("Schnet E")
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
@@ -257,7 +263,7 @@ def train_schnet_energy_force(
     criterion = energy_force_loss
     losses = []
     val_losses = []
-    with tqdm(total=epochs, ncols=80) as progress_bar:
+    with tqdm(total=epochs, ncols=100) as progress_bar:
         progress_bar.set_description("Schnet E+F")
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
@@ -270,8 +276,8 @@ def train_schnet_energy_force(
             )
             for X_batch, y_batch in train_gen:
                 # Forward pass
-                X_batch["R"].requires_grad_()
-                F = X_batch["F"].to(device)
+                X_batch, y_batch = data_to_device(X_batch, y_batch)
+                F = X_batch["F"]
 
                 # Only for the first epoch
                 if epoch == 0 and model_obj.running_mean_var:
@@ -312,8 +318,9 @@ def train_schnet_energy_force_mem(
     split_file=None,
     scheduler_step_size=100_000,
     save_checkpoint=True,
+    weight_decay=0,
 ):
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96, verbose=True)
     steps = 0
     criterion = energy_force_loss
@@ -335,13 +342,13 @@ def train_schnet_energy_force_mem(
     )
 
     lowest_loss = np.inf
-    with tqdm(total=epochs, ncols=80) as progress_bar:
+    with tqdm(total=epochs, ncols=100) as progress_bar:
         progress_bar.set_description("Schnet E+F")
         for epoch in range(epochs):
             for X_batch, y_batch in train_set:
                 # Forward pass
-                X_batch["R"].requires_grad_()
-                F = X_batch["F"].to(device)
+                X_batch, y_batch = data_to_device(X_batch, y_batch)
+                F = X_batch["F"]
 
                 # Only for the first epoch
                 if epoch == 0 and model.running_mean_var:
@@ -389,6 +396,8 @@ def train_schnet_energy_force_hyperparam(
     scheduler_step_size=100_000,
     save_checkpoint=False,
 ):
+    import ray
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = ExponentialLR(optimizer=optimizer, gamma=0.96)
     steps = 0
@@ -406,12 +415,8 @@ def train_schnet_energy_force_hyperparam(
     for epoch in range(epochs):
         for X_batch, y_batch in train_set:
             # Forward pass
-            X_batch["Z"] = X_batch["Z"].to(device)
-            X_batch["idx_i"] = X_batch["idx_i"].to(device)
-            X_batch["idx_j"] = X_batch["idx_j"].to(device)
-            X_batch["R"] = X_batch["R"].to(device)
-            X_batch["R"].to(device).requires_grad_()
-            F = X_batch["F"].to(device)
+            X_batch, y_batch = data_to_device(X_batch, y_batch)
+            F = X_batch["F"]
             y_batch = y_batch.to(device)
 
             # Forward pass
@@ -467,7 +472,7 @@ def train_schnet_force(
     criterion = nn.L1Loss()
     losses = []
     val_losses = []
-    with tqdm(total=epochs, ncols=80) as progress_bar:
+    with tqdm(total=epochs, ncols=100) as progress_bar:
         progress_bar.set_description("Schnet F")
         for epoch in range(epochs):
             train_gen, test_gen = load_data(
@@ -480,7 +485,7 @@ def train_schnet_force(
             )
             for X_batch, y_batch in train_gen:
                 # Forward pass
-                X_batch["R"].requires_grad_()
+                X_batch, y_batch = data_to_device(X_batch, y_batch)
                 target_F = X_batch["F"]
                 target_F.requires_grad_()
 
