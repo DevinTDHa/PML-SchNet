@@ -86,10 +86,10 @@ class CfConvReg(nn.Module):
         self.rbf = RadialBasisFunctions(rbf_min, rbf_max, n_rbf)
         self.w_layers = nn.Sequential(
             nn.Linear(n_rbf, atom_embeddings_dim, bias=False),
-            nn.BatchNorm1d(atom_embeddings_dim),
+            RMSNorm(atom_embeddings_dim),
             activation(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim, bias=False),
-            nn.BatchNorm1d(atom_embeddings_dim),
+            RMSNorm(atom_embeddings_dim),
             activation(),
         )
 
@@ -172,11 +172,11 @@ class CfConvBNDropout(nn.Module):
         self.rbf = RadialBasisFunctions(rbf_min, rbf_max, n_rbf)
         self.w_layers = nn.Sequential(
             nn.Linear(n_rbf, atom_embeddings_dim, bias=False),
-            nn.BatchNorm1d(atom_embeddings_dim),
+            RMSNorm(atom_embeddings_dim),
             nn.Dropout(dropout_p),
             activation(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim, bias=False),
-            nn.BatchNorm1d(atom_embeddings_dim),
+            RMSNorm(atom_embeddings_dim),
             nn.Dropout(dropout_p),
             activation(),
         )
@@ -275,7 +275,7 @@ class SchNetInteractionReg(nn.Module):
 
         self.out_atom_wise = nn.Sequential(
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim, bias=False),
-            nn.BatchNorm1d(atom_embeddings_dim),
+            RMSNorm(atom_embeddings_dim),
             activation(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim),
         )
@@ -383,7 +383,7 @@ class SchNetInteractionBNDropout(nn.Module):
 
         self.out_atom_wise = nn.Sequential(
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim, bias=False),
-            nn.BatchNorm1d(atom_embeddings_dim),
+            RMSNorm(atom_embeddings_dim),
             nn.Dropout(dropout_p),
             activation(),
             nn.Linear(atom_embeddings_dim, atom_embeddings_dim),

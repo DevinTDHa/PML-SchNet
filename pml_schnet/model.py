@@ -10,6 +10,7 @@ from pml_schnet.layers import (
     SchNetInteractionDropout,
     SchNetInteractionReg,
     SchNetInteractionBNDropout,
+    RMSNorm,
 )
 
 
@@ -302,7 +303,7 @@ class SchNetBatchNorm(SchNet):
 
         self.output_layers = nn.Sequential(
             nn.Linear(atom_embedding_dim, 32, bias=False),
-            nn.BatchNorm1d(32),
+            RMSNorm(32),
             activation(),
             nn.Linear(32, 1),
         )
@@ -390,7 +391,7 @@ class SchNetBNDropout(SchNet):
 
         self.output_layers = nn.Sequential(
             nn.Linear(atom_embedding_dim, 32, bias=False),
-            nn.BatchNorm1d(32),
+            RMSNorm(32),
             nn.Dropout(dropout_p),
             activation(),
             nn.Linear(32, 1),
