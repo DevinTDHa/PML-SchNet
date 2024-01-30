@@ -274,7 +274,7 @@ class SchNet(nn.Module):
         return embed_Z_sensitivity, R_sensitivity
 
 
-class SchNetBatchNorm(SchNet):
+class SchNetRMSNorm(SchNet):
     def __init__(
         self,
         atom_embedding_dim=64,

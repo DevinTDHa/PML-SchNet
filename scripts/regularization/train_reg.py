@@ -7,7 +7,7 @@ import shutil
 import numpy as np
 import torch
 
-from pml_schnet.model import SchNetBatchNorm
+from pml_schnet.model import SchNetRMSNorm
 from pml_schnet.settings import device
 from pml_schnet.training import train_schnet_energy_force_mem
 
@@ -18,7 +18,7 @@ def save_model(model, path):
 
 if __name__ == "__main__":
     print("Running on device", device)
-    model = SchNetBatchNorm(running_mean_var=True).to(device)
+    model = SchNetRMSNorm(running_mean_var=True).to(device)
 
     total_data = 404_000
     n_train = int(total_data * 0.9)
