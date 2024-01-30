@@ -17,7 +17,7 @@ def save_model(model, path):
 
 if __name__ == "__main__":
     print("Running on device", device)
-    model = SchNetTransformer(running_mean_var=True).to(device)
+    model = SchNetTransformer(running_mean_var=False).to(device)
 
     total_data = 404_000
     n_train = int(total_data * 0.9)
