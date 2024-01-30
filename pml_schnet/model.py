@@ -318,47 +318,44 @@ class SchNetRMSNorm(SchNet):
 
 
 class SchNetDropout(SchNet):
-    def __init__(
-        self,
-        atom_embedding_dim=64,
-        n_interactions=3,
-        max_z=100,
-        rbf_min=0.0,
-        rbf_max=30.0,
-        n_rbf=300,
-        activation: nn.Module = ShiftedSoftPlus,
-        running_mean_var=True,
-        dropout_p=0.5,
-    ):
-        super().__init__()
-        self.time_step = 0
-        # self.writer = writer
-        self.max_z = max_z
-        self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
+    def forward(self, inputs: Dict):
+        Z = inputs["Z"]  # Atomic numbers
 
-        self.interactions = nn.ModuleList(
-            [
-                SchNetInteractionDropout(
-                    atom_embedding_dim, rbf_min, rbf_max, n_rbf, activation, dropout_p
-                )
-                for _ in range(n_interactions)
-            ]
+        N = inputs["N"]  # Number of atoms in each molecule
+
+        R_distances = self.pairwise(inputs)
+
+        idx_i = inputs["idx_i"]  # indices of center atoms
+        idx_j = inputs["idx_j"]  # indices of neighboring atoms
+
+        # 1) Embedding 64 (See section Molecular representation).
+        X = self.embedding(Z)
+
+        dropout = nn.Dropout()
+
+        # 2),3),4) each Interaction 64 with residual layers
+        X_interacted = X
+        for i, interaction in enumerate(self.interactions):
+            X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)
+            if i == 0:
+                X_interacted = dropout(X_interacted)
+
+        # 5) atom-wise 32
+        # 6) Shifted Softplus
+        # 7) atom-wise 1
+        atom_outputs = self.output_layers(X_interacted)
+        # if self.writer:
+        #     self.writer.add_histogram(f"atom_outputs", atom_outputs, self.time_step)
+
+        # Assign Flattened Atoms Back to Molecules
+        atom_partitions = torch.split(
+            atom_outputs, N.tolist() if isinstance(N, torch.Tensor) else N
         )
 
-        self.output_layers = nn.Sequential(
-            nn.Linear(atom_embedding_dim, 32, bias=False),
-            nn.Dropout(dropout_p),
-            activation(),
-            nn.Linear(32, 1),
-        )
-        self.pairwise = PairwiseDistances()
-
-        self.running_mean_var = running_mean_var
-        if running_mean_var:
-            from welford_torch import Welford
-
-            self.welford_E = Welford()
-            self.welford_F = Welford()
+        # 8) Sum Pooling
+        predicted_energies = torch.stack([p.sum() for p in atom_partitions])
+        self.time_step += 1
+        return predicted_energies
 
 
 class SchNetBNDropout(SchNet):
