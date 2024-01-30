@@ -354,3 +354,78 @@ class SchNetDropout(SchNet):
         predicted_energies = torch.stack([p.sum() for p in atom_partitions])
         self.time_step += 1
         return predicted_energies
+
+
+class SchNetTransformer(nn.Module):
+    def __init__(
+        self,
+        max_z=100,
+        atom_embedding_dim=64,
+        d_model=64,
+        nhead=8,
+        dim_feedforward=64,
+        dropout=0,
+        transformer_layers_Z=3,
+        transformer_layers_R=2,
+        max_atom_length=19,
+        activation: nn.Module = ShiftedSoftPlus,
+        running_mean_var=False,
+    ):
+        super().__init__()
+        self.time_step = 0
+        self.max_z = max_z
+        self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
+
+        self.transformer_Z = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model, nhead, dim_feedforward, dropout, batch_first=True
+            ),
+            num_layers=transformer_layers_Z,
+        )
+
+        self.transformer_R = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                max_atom_length * 3, 3, dim_feedforward, dropout, batch_first=True
+            ),
+            num_layers=transformer_layers_R,
+        )
+
+        self.output_Z = nn.Sequential(
+            nn.Flatten(start_dim=1), nn.Linear(max_atom_length * d_model, 32)
+        )
+
+        self.output_R = nn.Linear(max_atom_length * 3, 32)
+
+        self.linear_out = nn.Sequential(
+            activation(),
+            nn.Linear(32, 1),
+        )
+
+        self.running_mean_var = running_mean_var
+        if running_mean_var:
+            from welford_torch import Welford
+
+            self.welford_E = Welford()
+            self.welford_F = Welford()
+
+    def forward(self, inputs: Dict):
+        Z = inputs["Z"]  # Atomic numbers
+        N = inputs["N"]  # Number of atoms in each molecule
+        R = inputs["R"]
+        batch_size = len(N)
+
+        stacked_Z = torch.stack(torch.split(Z, N))
+
+        embed_stacked_Z = self.embedding(stacked_Z)
+
+        transformer_out_Z = self.transformer_Z(embed_stacked_Z)
+        out_Z = self.output_Z(transformer_out_Z)
+        transformer_out_R = self.transformer_R(R.view(batch_size, -1))
+        out_R = self.output_R(transformer_out_R)
+
+        combined_out = out_Z + out_R
+
+        predicted_energies = self.linear_out(combined_out)
+
+        self.time_step += 1
+        return predicted_energies.flatten()
