@@ -22,7 +22,7 @@ if __name__ == "__main__":
     total_data = 404_000
     n_train = int(total_data * 0.9)
     n_test = int(total_data * 0.1)
-    lr = 1e-3
+    lr = 1e-3 * 2
 
     batch_size = 32
     epochs = 150

@@ -391,15 +391,14 @@ class SchNetTransformer(nn.Module):
         )
 
         self.output_Z = nn.Sequential(
-            nn.Flatten(start_dim=1), nn.Linear(max_atom_length * d_model, 32)
-        )
-
-        self.output_R = nn.Linear(max_atom_length * 3, 32)
-
-        self.linear_out = nn.Sequential(
+            nn.Flatten(start_dim=1),
+            nn.Linear(max_atom_length * d_model, 32),
             activation(),
-            nn.Linear(32, 1),
         )
+
+        self.output_R = nn.Sequential(nn.Linear(max_atom_length * 3, 32), activation())
+
+        self.linear_out = nn.Linear(32, 1)
 
         self.running_mean_var = running_mean_var
         if running_mean_var:
