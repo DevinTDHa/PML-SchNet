@@ -267,7 +267,7 @@ class SchNet(nn.Module):
 
         embed_Z_grad, R_grad = torch.autograd.grad(output, [embed_Z, R])
         embed_Z_sensitivity, R_sensitivity = embed_Z_grad.pow(2).norm(
-            axis=1
+            dim=1
         ), R_grad.pow(2)
         return embed_Z_sensitivity, R_sensitivity
 
