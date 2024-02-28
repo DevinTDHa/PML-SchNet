@@ -187,7 +187,6 @@ def validate(
             molecule=molecule,
             split_file=split_file,
         )
-
         if task == Task.energy:
             return validate_schnet_energy(model, test_gen, nn.L1Loss())
         elif task == Task.force:

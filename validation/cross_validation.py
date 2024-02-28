@@ -1,5 +1,8 @@
 import argparse
 import os
+import sys
+sys.path.append(os.getcwd())
+
 import pickle
 import shutil
 
@@ -12,7 +15,6 @@ from pml_schnet.data_loader import load_data
 from pml_schnet.loss import *
 from pml_schnet.model import SchNet
 from pml_schnet.settings import *
-
 
 class CrossValidator:
     def __init__(self, batch_size, n_train, n_test, epochs, lr, k):
@@ -142,14 +144,14 @@ def create_arg_parser():
     parser.add_argument(
         "--batch_size",
         type=positive_int,
-        default=32,
+        default=512,
         help="Batch size for training (default: 32)",
     )
 
     parser.add_argument(
         "--n_train",
         type=positive_int,
-        default=100000,
+        default=4000,
         help="Number of training samples (default: 100000)",
     )
 
@@ -163,14 +165,14 @@ def create_arg_parser():
     parser.add_argument(
         "--k",
         type=positive_int,
-        default=5,
+        default=2,
         help="Number of folds for cross-validation (default: 5)",
     )
 
     parser.add_argument(
         "--epochs",
         type=positive_int,
-        default=2,
+        default=1,
         help="Number of epochs for training (default: 1)",
     )
 
@@ -183,6 +185,7 @@ def create_arg_parser():
 
     return parser
 
+import time  # Import the time module
 
 if __name__ == "__main__":
     parser = create_arg_parser()
@@ -205,4 +208,16 @@ if __name__ == "__main__":
     cross_validator = CrossValidator(
         args.batch_size, args.n_train, args.n_test, args.epochs, args.lr, args.k
     )
+
+    # Record the start time
+    start_time = time.time()
+
+    # Perform Cross Validation
     cross_validator.cross_validate()
+
+    # Record the end time
+    end_time = time.time()
+
+    # Calculate and print the elapsed time
+    elapsed_time = end_time - start_time
+    print(f"Time elapsed during cross_validate(): {elapsed_time:.2f} seconds")

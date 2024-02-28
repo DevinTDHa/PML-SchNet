@@ -2,7 +2,18 @@ from dataclasses import dataclass
 
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def get_device():
+    if torch.cuda.is_available():
+        _device_string = "cuda"
+    elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        _device_string = "mps"
+    else:
+        _device_string = "cpu"
+    return torch.device(_device_string)
+
+
+device = get_device()
 
 
 class Task:
@@ -47,7 +58,6 @@ valid_molecules = {
     "toluene": 15,
     "uracil": 12,
 }
-
 
 
 md17_trainable_all = (
