@@ -1,5 +1,30 @@
+from typing import Dict
+
 import torch
 from torch import nn
+
+from pml_schnet.activation import ShiftedSoftPlus
+from pml_schnet.layers import SchNetInteraction
+
+
+class PairwiseDistances(nn.Module):
+    """
+    Compute pair-wise distances from indices provided by a neighbor list transform.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    @staticmethod
+    def forward(inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+        R = inputs["R"]
+        idx_i = inputs["idx_i"]
+        idx_j = inputs["idx_j"]
+
+        Rij = R[idx_i] - R[idx_j]
+        d_ij = torch.norm(Rij, dim=-1)
+
+        return d_ij
 
 
 class BaselineModel(nn.Module):
@@ -23,3 +48,92 @@ class BaselineModel(nn.Module):
         # torch.stack keeps grad_fn
         batch_means = torch.stack([pred.sum() for pred in Y_batch])
         return batch_means
+
+
+class SchNet(nn.Module):
+    def __init__(
+        self,
+        atom_embedding_dim=64,
+        n_interactions=3,
+        max_z=100,
+        rbf_min=0.0,
+        rbf_max=30.0,
+        n_rbf=300,
+        activation: nn.Module = ShiftedSoftPlus,
+        writer=None,
+    ):
+        """
+        # Molecular representation NOTES
+        # Basically  convert atomic positions and nuclear charges (R,Z) into feature vector X.
+        Nuclear charge can also be called "Atom-Type"
+
+        # ATOMWISE NOTES:
+        Atom wise layers SHARE WEIGHTS across atoms and have no activation func?. But what about layers?
+        Atomwise are dense layers applied separately to representation of each atom in X.
+        Layers recombine feature maps and share weights across atoms
+        I guess we re-use all atom-wise with same shape and fetch them based on embedding
+
+
+        # INTERACTION BLOCK NOTES
+        """
+        super().__init__()
+        self.time_step = 0
+        self.writer = writer
+        self.max_z = max_z
+        self.embedding = nn.Embedding(max_z, atom_embedding_dim, padding_idx=0)
+
+        self.interactions = nn.ModuleList(
+            [
+                SchNetInteraction(
+                    atom_embedding_dim, rbf_min, rbf_max, n_rbf, activation
+                )
+                for _ in range(n_interactions)
+            ]
+        )
+
+        self.output_layers = nn.Sequential(
+            nn.Linear(atom_embedding_dim, 32),
+            activation(),
+            nn.Linear(32, 1),
+        )
+        self.pairwise = PairwiseDistances()
+
+    def forward(self, inputs: Dict):
+        Z = inputs["Z"]  # Atomic numbers
+
+        N = inputs["N"]  # Number of atoms in each molecule
+
+        R_distances = self.pairwise(inputs)
+
+        idx_i = inputs["idx_i"]  # indices of center atoms
+        idx_j = inputs["idx_j"]  # indices of neighboring atoms
+
+        # 1) Embedding 64 (See section Molecular representation).
+        X = self.embedding(Z)
+
+        # 2),3),4) each Interaction 64 with residual layers
+        X_interacted = X
+        for i, interaction in enumerate(self.interactions):
+            X_interacted = interaction(X_interacted, R_distances, idx_i, idx_j)
+            # if self.writer:
+            #     self.writer.add_histogram(
+            #         f"interaction_{i}", X_interacted, self.time_step
+            #     )
+            # self.writer.add_scalar(f'Gradient_norm/{name}', param.grad.norm(), epoch)
+
+        # 5) atom-wise 32
+        # 6) Shifted Softplus
+        # 7) atom-wise 1
+        atom_outputs = self.output_layers(X_interacted)
+        # if self.writer:
+        #     self.writer.add_histogram(f"atom_outputs", atom_outputs, self.time_step)
+
+        # Assign Flattened Atoms Back to Molecules
+        atom_partitions = torch.split(
+            atom_outputs, N.tolist() if isinstance(N, torch.Tensor) else N
+        )
+
+        # 8) Sum Pooling
+        predicted_energies = torch.stack([p.sum() for p in atom_partitions])
+        self.time_step += 1
+        return predicted_energies

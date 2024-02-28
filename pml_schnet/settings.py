@@ -4,6 +4,7 @@ import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class Task:
     energy = "energy"
     force = "force"
@@ -27,6 +28,12 @@ class Trainable:
     task: str
     molecule: str = None
 
+    def __str__(self):
+        if self.molecule:
+            return f"{self.dataset}_{self.task}_{self.molecule}"
+        else:
+            return f"{self.dataset}_{self.task}"
+
 
 valid_molecules = {
     "aspirin": 21,
@@ -40,6 +47,8 @@ valid_molecules = {
     "toluene": 15,
     "uracil": 12,
 }
+
+
 
 md17_trainable_all = (
     [Trainable(Dataset.md17, Task.energy, m) for m in valid_molecules]
